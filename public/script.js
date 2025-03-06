@@ -411,7 +411,7 @@ function saveState() {
     localStorage.setItem('optionChainState', JSON.stringify(state));
   } 
   function loadState() {
-    const savedState = JSON.parse(localStorage.getItem('optionChainState')) || initialState;
+    const savedState = JSON.parse(localStorage.getItem('optionChainState')) || 0;
     
     //Restore Total Variables
     totalCallVolume = savedState.initialCallVolume || 0,
