@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Restore all input fields
     accessTokenInput.value = localStorage.getItem('accessToken') || '';
     authCodeInput.value = localStorage.getItem('authCode') || '';
-    expiryDateInput.value = localStorage.getItem('expiryDate') || '';
+    document.getElementById('expiryDate').value = localStorage.getItem('expiryDate') || '';
     
     // Restore button states
     if (localStorage.getItem('liveRefreshActive') === 'true') {
@@ -11,11 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
   
     // Load calculation state
     loadState();
-
-    expiryDateInput.addEventListener('change', () => {
-    localStorage.setItem('expiryDate', expiryDateInput.value);
-    saveState(); // Optionally save the full state
-    });
     
     // Auto-populate table if data exists
     const savedChain = localStorage.getItem('rawOptionChain');
@@ -36,7 +31,6 @@ const accessTokenInput = document.getElementById('accessToken');
 const authCodeInput = document.getElementById('authCode');
 const sendAuthCodeBtn = document.getElementById('sendAuthCodeBtn');
 const optionChainTableBody = document.getElementById('optionChainTableBody');
-const expiryDateInput = document.getElementById('expiryDate');
 
 // ========== Background Execution Setup ==========
 let worker;
@@ -409,9 +403,6 @@ function saveState() {
       changeinCallOI,
       changeinPutvolume,
       changeinPutOI,
-
-      //Expiry Date
-      expiryDate: document.getElementById('expiryDate').value,
       
       // UI state
       calculateChangeTimerStarted
@@ -420,7 +411,7 @@ function saveState() {
     localStorage.setItem('optionChainState', JSON.stringify(state));
   } 
   function loadState() {
-    const savedState = JSON.parse(localStorage.getItem('optionChainState')) || initialState;
+    const savedState = JSON.parse(localStorage.getItem('optionChainState')) || 0;
     
     //Restore Total Variables
     totalCallVolume = savedState.initialCallVolume || 0,
@@ -460,9 +451,6 @@ function saveState() {
     changeinCallOI = savedState.changeinCallOI || 0;
     changeinPutvolume = savedState.changeinPutvolume || 0;
     changeinPutOI = savedState.changeinPutOI || 0;
-
-    //Restore Expiry Date
-    document.getElementById('expiryDate').value = savedState.expiryDate;
     
     calculateChangeTimerStarted = savedState.calculateChangeTimerStarted || false;
   }   
