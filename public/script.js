@@ -36,6 +36,7 @@ const accessTokenInput = document.getElementById('accessToken');
 const authCodeInput = document.getElementById('authCode');
 const sendAuthCodeBtn = document.getElementById('sendAuthCodeBtn');
 const optionChainTableBody = document.getElementById('optionChainTableBody');
+const expiryDateInput = document.getElementById('expiryDate');
 
 // ========== Background Execution Setup ==========
 let worker;
@@ -408,10 +409,10 @@ function saveState() {
       changeinCallOI,
       changeinPutvolume,
       changeinPutOI,
-        
+
       //Expiry Date
-      expiryDate: document.getElementById('expiryDate').value,  
-        
+      expiryDate: document.getElementById('expiryDate').value,
+      
       // UI state
       calculateChangeTimerStarted
     };
