@@ -56,35 +56,35 @@ if (window.Worker) {
 }
 
 // ========== Original Variables ==========
-let initialCallVolume = initialState.call.volume;
-let initialCallOI = initialState.call.OI;
-let initialCallAskQty = initialState.call.askQty;
-let initialCallBidQty = initialState.call.bidQty;
-let initialCallIV = initialState.call.IV;
-let initialCallDelta = initialState.call.delta;
+let initialCallVolume = 0;
+let initialCallOI = 0;
+let initialCallAskQty = 0;
+let initialCallBidQty = 0;
+let initialCallIV = 0;
+let initialCallDelta = 0;
 
-let initialPutVolume = initialState.put.volume;
-let initialPutOI = initialState.put.OI;
-let initialPutAskQty = initialState.put.askQty;
-let initialPutBidQty = initialState.put.bidQty;
-let initialPutIV = initialState.put.IV;
-let initialPutDelta = initialState.put.delta;
+let initialPutVolume = 0;
+let initialPutOI = 0;
+let initialPutAskQty = 0;
+let initialPutBidQty = 0;
+let initialPutIV = 0;
+let initialPutDelta = 0;
 
-let initialprice = initialState.price;
-let deltCallvolume = initialState.deltas.callVolume;
-let deltCalloi = initialState.deltas.callOI;
-let deltPutvolume = initialState.deltas.putVolume;
-let deltPutoi = initialState.deltas.putOI;
+let initialprice = 0;
+let deltCallvolume = 0;
+let deltCalloi = 0;
+let deltPutvolume = 0;
+let deltPutoi = 0;
 
-let initialdeltCallvolume = initialState.deltas.callVolume;
-let initialdeltCalloi = initialState.deltas.callOI;
-let initialdeltPutvolume = initialState.deltas.putVolume;
-let initialdeltPutoi = initialState.deltas.putOI;
+let initialdeltCallvolume = 0;
+let initialdeltCalloi = 0;
+let initialdeltPutvolume = 0;
+let initialdeltPutoi = 0;
 
-let changeinCallvolume = initialState.changes.changeinCallvolume;
-let changeinCallOI = initialState.changes.changeinCallOI;
-let changeinPutvolume = initialState.changes.changeinPutvolume;
-let changeinPutOI = initialState.changes.changeinPutOI;
+let changeinCallvolume = 0;
+let changeinCallOI = 0;
+let changeinPutvolume = 0;
+let changeinPutOI = 0;
 
 let calculateChangeTimerStarted = localStorage.getItem('calculateChangeTimer') === 'true';
 
