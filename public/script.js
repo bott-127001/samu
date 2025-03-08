@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Restore all input fields
     accessTokenInput.value = localStorage.getItem('accessToken') || '';
     authCodeInput.value = localStorage.getItem('authCode') || '';
-    document.getElementById('expiryDate').value = localStorage.getItem('expiryDate') || '';
+    expiryDateInput.value = localStorage.getItem('expiryDate') || '';
     
     // Restore button states
     if (localStorage.getItem('liveRefreshActive') === 'true') {
@@ -11,6 +11,11 @@ document.addEventListener('DOMContentLoaded', () => {
   
     // Load calculation state
     loadState();
+
+    expiryDateInput.addEventListener('change', () => {
+    localStorage.setItem('expiryDate', expiryDateInput.value);
+    saveState(); // Optionally save the full state
+    });
     
     // Auto-populate table if data exists
     const savedChain = localStorage.getItem('rawOptionChain');
@@ -31,6 +36,7 @@ const accessTokenInput = document.getElementById('accessToken');
 const authCodeInput = document.getElementById('authCode');
 const sendAuthCodeBtn = document.getElementById('sendAuthCodeBtn');
 const optionChainTableBody = document.getElementById('optionChainTableBody');
+const expiryDateInput = document.getElementById('expiryDate');
 
 // ========== Background Execution Setup ==========
 let worker;
@@ -71,20 +77,34 @@ let initialPutIV = 0;
 let initialPutDelta = 0;
 
 let initialprice = 0;
+
 let deltCallvolume = 0;
 let deltCalloi = 0;
 let deltPutvolume = 0;
 let deltPutoi = 0;
+let deltCalldelta = 0;
+let deltPutdelta = 0;
+let deltCallIV = 0;
+let deltPutIV = 0;
 
 let initialdeltCallvolume = 0;
 let initialdeltCalloi = 0;
 let initialdeltPutvolume = 0;
 let initialdeltPutoi = 0;
+let initialdeltCalldelta = 0;
+let initialdeltPutdelta = 0;
+let initialdeltCallIV = 0;
+let initialdeltPutIV = 0;
+
 
 let changeinCallvolume = 0;
 let changeinCallOI = 0;
 let changeinPutvolume = 0;
 let changeinPutOI = 0;
+let changeinCallDelta = 0;
+let changeinPutDelta = 0;
+let changeinCallIV = 0;
+let changeinPutIV = 0;
 
 let calculateChangeTimerStarted = localStorage.getItem('calculateChangeTimer') === 'true';
 
@@ -178,20 +198,32 @@ function calculateChange(deltCallvolume, deltCalloi, deltPutoi, deltPutvolume) {
         initialdeltCalloi = deltCalloi;
         initialdeltPutvolume = deltPutvolume;
         initialdeltPutoi = deltPutoi;
-        return { changeinCallvolume, changeinCallOI, changeinPutOI, changeinPutvolume };
+        initialdeltCalldelta = deltCalldelta;
+        initialdeltPutdelta = deltPutdelta;
+        initialdeltCallIV = deltCallIV;
+        initialdeltPutIV = deltPutIV;
+        return { changeinCallvolume, changeinCallOI, changeinPutOI, changeinPutvolume, changeinCallDelta, changeinPutDelta, changeinCallIV, changeinPutIV };
     }
 
     changeinCallvolume = deltCallvolume - initialdeltCallvolume;
     changeinCallOI = deltCalloi - initialdeltCalloi;
     changeinPutvolume = deltPutvolume - initialdeltPutvolume;
     changeinPutOI = deltPutoi - initialdeltPutoi;
+    changeinCallDelta = deltCalldelta - initialdeltCalldelta;
+    changeinPutDelta = deltPutdelta - initialdeltPutdelta;
+    changeinCallIV = deltCallIV - initialdeltCallIV;
+    changeinPutIV = deltPutIV - initialdeltPutIV;
 
     initialdeltCallvolume = deltCallvolume;
     initialdeltCalloi = deltCalloi;
     initialdeltPutvolume = deltPutvolume;
     initialdeltPutoi = deltPutoi;
+    initialdeltCalldelta = deltCalldelta;
+    initialdeltPutdelta = deltPutdelta;
+    initialdeltCallIV = deltCallIV;
+    initialdeltPutIV = deltPutIV;
     
-    return { changeinCallvolume, changeinCallOI, changeinPutOI, changeinPutvolume };
+    return { changeinCallvolume, changeinCallOI, changeinPutOI, changeinPutvolume, changeinCallDelta, changeinPutDelta, changeinCallIV, changeinPutIV };
 }
 
 // ========== Original Update Function ==========
@@ -274,9 +306,14 @@ function updateOptionChainData(optionChain, underlyingSpotPrice) {
 
     deltCallvolume = (totalCallVolume-initialCallVolume)/totalCallVolume * 100;
     deltCalloi = (totalCallOI-initialCallOI)/totalCallOI * 100;
+    deltCalldelta = (totalCalldelta - initialCallDelta)/totalCalldelta * 100;
+    deltCallIV = (totalCallIV - initialCallIV)/totalCallIV * 100;
+    
 
     deltPutvolume = (totalPutVolume-initialPutVolume)/totalPutVolume * 100;
     deltPutoi = (totalPutOI-initialPutOI)/totalPutOI * 100;
+    deltPutdelta = (totalPutdelta-initialPutDelta)/totalPutdelta * 100;
+    deltCallIV = (totalCallIV - initialCallIV)/totalCallIV * 100;
 
     if (!calculateChangeTimerStarted) {
         calculateChangeTimerStarted = true;
@@ -315,8 +352,8 @@ function updateOptionChainData(optionChain, underlyingSpotPrice) {
     diffRow.innerHTML = `
     <td>${totalCallVolume - initialCallVolume}</td>
     <td>${totalCallOI - initialCallOI}</td>
-    <td></td>
-    <td></td>
+    <td>${(totalCallIV - initialCallIV).toFixed(4)}</td>
+    <td>${(totalCalldelta - initialCallDelta).toFixed(4)}</td>
     <td></td>
     <td>${totalCallBidQty - initialCallBidQty}</td>
     <td></td>
@@ -328,8 +365,8 @@ function updateOptionChainData(optionChain, underlyingSpotPrice) {
     <td></td>
     <td>${totalPutBidQty - initialPutBidQty}</td>
     <td></td>
-    <td></td>
-    <td></td>
+    <td>>${(totalPutdelta - initialPutDelta).toFixed(4)}</td>
+    <td>${(totalPutIV - initialPutIV).toFixed(4)}</td>
     <td>${totalPutOI - initialPutOI}</td>
     <td>${totalPutVolume - initialPutVolume}</td>
     `;
@@ -339,8 +376,8 @@ function updateOptionChainData(optionChain, underlyingSpotPrice) {
     deltarow.innerHTML = `
     <td>${deltCallvolume.toFixed(3)}, ${changes?.changeinCallvolume?.toFixed(3) || '0.000'}</td>
     <td>${deltCalloi.toFixed(3)}, ${changes?.changeinCallOI?.toFixed(3) ||'0.000'}</td>
-    <td>${(totalCallIV - initialCallIV).toFixed(4)}</td>
-    <td>${(totalCalldelta - initialCallDelta).toFixed(4)}</td>
+    <td>${deltCallIV.toFixed(3)}, ${chnages?.changeinCallIV?.toFixed(3) || '0.000'}</td>
+    <td>${deltCalldelta.toFixed(3)}, ${chnages?.changeinCallDelta?.toFixed(3) || '0.000'}</td>
     <td></td>
     <td></td>
     <td></td>
@@ -352,8 +389,8 @@ function updateOptionChainData(optionChain, underlyingSpotPrice) {
     <td></td>
     <td></td>
     <td></td>
-    <td>${(totalPutdelta - initialPutDelta).toFixed(4)}</td>
-    <td>${(totalPutIV - initialPutIV).toFixed(4)}</td>
+    <td>${deltPutdelta.toFixed(3)}, ${chnages?.changeinPutDelta?.toFixed(3) || '0.000'}</td>
+    <td>${deltPutIV.toFixed(3)}, ${chnages?.changeinPutIV?.toFixed(3) || '0.000'}</td>
     <td>${deltPutoi.toFixed(3)}, ${changes?.changeinPutOI?.toFixed(3) || '0.000'}</td>
     <td>${deltPutvolume.toFixed(3)}, ${changes?.changeinPutvolume?.toFixed(3) || '0.000'}</td>
     `;
@@ -397,12 +434,24 @@ function saveState() {
       deltCalloi,
       deltPutvolume,
       deltPutoi,
+      deltCallIV,
+      deltPutIV,
+      deltCalldelta,
+      deltPutdelta,
+      
       
       // Changes over time
       changeinCallvolume,
       changeinCallOI,
       changeinPutvolume,
       changeinPutOI,
+      changeinCallDelta,
+      changeinCallIV,
+      changeinPutDelta,
+      changeinPutIV,
+
+      //Expiry Date
+      expiryDate: document.getElementById('expiryDate').value,
       
       // UI state
       calculateChangeTimerStarted
@@ -411,7 +460,7 @@ function saveState() {
     localStorage.setItem('optionChainState', JSON.stringify(state));
   } 
   function loadState() {
-    const savedState = JSON.parse(localStorage.getItem('optionChainState')) || 0;
+    const savedState = JSON.parse(localStorage.getItem('optionChainState')) || initialState;
     
     //Restore Total Variables
     totalCallVolume = savedState.initialCallVolume || 0,
@@ -447,10 +496,23 @@ function saveState() {
     deltCalloi = savedState.deltCalloi || 0;
     deltPutvolume = savedState.deltPutvolume || 0;
     deltPutoi = savedState.deltPutoi || 0;
+    deltCallIV = saveState.deltCallIV || 0;
+    deltCalldelta = saveState.deltCalldelta || 0;
+    deltPutIV = saveState.deltPutIV || 0;
+    deltPutdelta = saveState.deltPutdelta || 0;
+
     changeinCallvolume = savedState.changeinCallvolume || 0;
     changeinCallOI = savedState.changeinCallOI || 0;
     changeinPutvolume = savedState.changeinPutvolume || 0;
     changeinPutOI = savedState.changeinPutOI || 0;
+    changeinCallDelta = savedState.changeinCallDelta || 0;
+    changeinCallIV = savedState.changeinCallIV || 0;
+    changeinPutDelta = savedState.changeinPutDelta || 0;
+    changeinPutIV = savedState.changeinPutIV || 0;
+
+
+    //Restore Expiry Date
+    document.getElementById('expiryDate').value = savedState.expiryDate;
     
     calculateChangeTimerStarted = savedState.calculateChangeTimerStarted || false;
   }   
