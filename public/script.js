@@ -376,8 +376,8 @@ function updateOptionChainData(optionChain, underlyingSpotPrice) {
     deltarow.innerHTML = `
     <td>${deltCallvolume.toFixed(3)}, ${changes?.changeinCallvolume?.toFixed(3) || '0.000'}</td>
     <td>${deltCalloi.toFixed(3)}, ${changes?.changeinCallOI?.toFixed(3) ||'0.000'}</td>
-    <td>${deltCallIV.toFixed(3)}, ${chnages?.changeinCallIV?.toFixed(3) || '0.000'}</td>
-    <td>${deltCalldelta.toFixed(3)}, ${chnages?.changeinCallDelta?.toFixed(3) || '0.000'}</td>
+    <td>${deltCallIV.toFixed(3)}, ${changes?.changeinCallIV?.toFixed(3) || '0.000'}</td>
+    <td>${deltCalldelta.toFixed(3)}, ${changes?.changeinCallDelta?.toFixed(3) || '0.000'}</td>
     <td></td>
     <td></td>
     <td></td>
