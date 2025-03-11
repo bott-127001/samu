@@ -389,8 +389,8 @@ function updateOptionChainData(optionChain, underlyingSpotPrice) {
     <td></td>
     <td></td>
     <td></td>
-    <td>${deltPutdelta.toFixed(3)}, ${chnages?.changeinPutDelta?.toFixed(3) || '0.000'}</td>
-    <td>${deltPutIV.toFixed(3)}, ${chnages?.changeinPutIV?.toFixed(3) || '0.000'}</td>
+    <td>${deltPutdelta.toFixed(3)}, ${changes?.changeinPutDelta?.toFixed(3) || '0.000'}</td>
+    <td>${deltPutIV.toFixed(3)}, ${changes?.changeinPutIV?.toFixed(3) || '0.000'}</td>
     <td>${deltPutoi.toFixed(3)}, ${changes?.changeinPutOI?.toFixed(3) || '0.000'}</td>
     <td>${deltPutvolume.toFixed(3)}, ${changes?.changeinPutvolume?.toFixed(3) || '0.000'}</td>
     `;
