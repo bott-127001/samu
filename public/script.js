@@ -460,7 +460,7 @@ function saveState() {
     localStorage.setItem('optionChainState', JSON.stringify(state));
   } 
   function loadState() {
-    const savedState = JSON.parse(localStorage.getItem('optionChainState')) || initialState;
+    const savedState = JSON.parse(localStorage.getItem('optionChainState')) || '0';
     
     //Restore Total Variables
     totalCallVolume = savedState.initialCallVolume || 0,
@@ -496,10 +496,10 @@ function saveState() {
     deltCalloi = savedState.deltCalloi || 0;
     deltPutvolume = savedState.deltPutvolume || 0;
     deltPutoi = savedState.deltPutoi || 0;
-    deltCallIV = saveState.deltCallIV || 0;
-    deltCalldelta = saveState.deltCalldelta || 0;
-    deltPutIV = saveState.deltPutIV || 0;
-    deltPutdelta = saveState.deltPutdelta || 0;
+    deltCallIV = savedState.deltCallIV || 0;
+    deltCalldelta = savedState.deltCalldelta || 0;
+    deltPutIV = savedState.deltPutIV || 0;
+    deltPutdelta = savedState.deltPutdelta || 0;
 
     changeinCallvolume = savedState.changeinCallvolume || 0;
     changeinCallOI = savedState.changeinCallOI || 0;
