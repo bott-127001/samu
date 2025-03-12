@@ -15,6 +15,11 @@ document.addEventListener('DOMContentLoaded', () => {
     expiryDateInput.addEventListener('change', () => {
     localStorage.setItem('expiryDate', expiryDateInput.value);
     saveState(); // Optionally save the full state
+
+      // Start timer if it was active
+    if (localStorage.getItem('calculateChangeTimerActive') === 'true') {
+        startCalculateChangeTimer();
+    }
     });
     
     // Auto-populate table if data exists
@@ -106,8 +111,6 @@ let changeinPutDelta = 0;
 let changeinCallIV = 0;
 let changeinPutIV = 0;
 
-let calculateChangeTimerStarted = localStorage.getItem('calculateChangeTimer') === 'true';
-
 let changes;
 // ========== Event Listeners ==========
 getDataBtn.addEventListener('click', fetchData);
@@ -178,15 +181,17 @@ async function fetchData() {
 
 // ========== Background Execution Control ==========
 function toggleLiveRefresh() {
-    if (isLiveRefreshActive) {
-        worker.postMessage('stop');
-        liveRefreshBtn.textContent = 'Live Refresh';
-    } else {
-        worker.postMessage('start');
-        liveRefreshBtn.textContent = 'Stop Refresh';
-    }
-    isLiveRefreshActive = !isLiveRefreshActive;
-    localStorage.setItem('liveRefreshActive', isLiveRefreshActive);
+  if (isLiveRefreshActive) {
+    worker.postMessage('stop');
+    liveRefreshBtn.textContent = 'Live Refresh';
+    stopCalculateChangeTimer(); // Stop the timer
+  } else {
+    worker.postMessage('start');
+    liveRefreshBtn.textContent = 'Stop Refresh';
+    startCalculateChangeTimer(); // Start the timer
+  }
+  isLiveRefreshActive = !isLiveRefreshActive;
+  localStorage.setItem('liveRefreshActive', isLiveRefreshActive);
 }
 
 // ========== State Management Functions ==========
@@ -224,6 +229,37 @@ function calculateChange(deltCallvolume, deltCalloi, deltPutoi, deltPutvolume) {
     initialdeltPutIV = deltPutIV;
     
     return { changeinCallvolume, changeinCallOI, changeinPutOI, changeinPutvolume, changeinCallDelta, changeinPutDelta, changeinCallIV, changeinPutIV };
+}
+
+//function for 15-min background fetching sustainance over reload
+// ========================
+// TIMER MANAGEMENT
+// ========================
+let calculateChangeTimer;
+
+function startCalculateChangeTimer() {
+  // Clear existing timer
+  if (calculateChangeTimer) clearTimeout(calculateChangeTimer);
+
+  // Get last execution time
+  const lastExecution = parseInt(localStorage.getItem('calculateChangeLastRun')) || Date.now();
+  const nextExecution = lastExecution + 900000; // 15 minutes
+  const remainingTime = nextExecution - Date.now();
+
+  // Schedule next execution
+  calculateChangeTimer = setTimeout(() => {
+    changes = calculateChange(deltCallvolume, deltCalloi, deltPutoi, deltPutvolume);
+    localStorage.setItem('calculateChangeLastRun', Date.now());
+    startCalculateChangeTimer(); // Restart timer
+  }, Math.max(remainingTime, 0)); // Ensure non-negative
+
+  localStorage.setItem('calculateChangeTimerActive', 'true');
+}
+
+function stopCalculateChangeTimer() {
+  clearTimeout(calculateChangeTimer);
+  localStorage.removeItem('calculateChangeLastRun');
+  localStorage.removeItem('calculateChangeTimerActive');
 }
 
 // ========== Original Update Function ==========
@@ -315,12 +351,8 @@ function updateOptionChainData(optionChain, underlyingSpotPrice) {
     deltPutdelta = (totalPutdelta-initialPutDelta)/totalPutdelta * 100;
     deltPutIV = (totalCallIV - initialCallIV)/totalPutIV * 100;
 
-    if (!calculateChangeTimerStarted) {
-        calculateChangeTimerStarted = true;
-        setInterval(() => {
-            changes = calculateChange(deltCallvolume, deltCalloi, deltPutoi, deltPutvolume);
-        }, 900000);
-        localStorage.setItem('calculateChangeTimer', 'true');
+    if (localStorage.getItem('calculateChangeTimerActive') === 'true') {
+        startCalculateChangeTimer();
     }
 
     //displaying values in the table
@@ -454,13 +486,23 @@ function saveState() {
       expiryDate: document.getElementById('expiryDate').value,
       
       // UI state
-      calculateChangeTimerStarted
+      calculateChangeTimerStarted,
+      calculateChangeLastRun: localStorage.getItem('calculateChangeLastRun'),
+      calculateChangeTimerActive: localStorage.getItem('calculateChangeTimerActive')
     };
     
     localStorage.setItem('optionChainState', JSON.stringify(state));
   } 
   function loadState() {
     const savedState = JSON.parse(localStorage.getItem('optionChainState')) || '0';
+    
+    // Restore timer state
+    if (savedState.calculateChangeTimerActive) {
+        localStorage.setItem('calculateChangeTimerActive', savedState.calculateChangeTimerActive);
+    }
+    if (savedState.calculateChangeLastRun) {
+        localStorage.setItem('calculateChangeLastRun', savedState.calculateChangeLastRun);
+    }
     
     //Restore Total Variables
     totalCallVolume = savedState.initialCallVolume || 0,
