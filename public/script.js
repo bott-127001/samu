@@ -313,7 +313,7 @@ function updateOptionChainData(optionChain, underlyingSpotPrice) {
     deltPutvolume = (totalPutVolume-initialPutVolume)/totalPutVolume * 100;
     deltPutoi = (totalPutOI-initialPutOI)/totalPutOI * 100;
     deltPutdelta = (totalPutdelta-initialPutDelta)/totalPutdelta * 100;
-    deltCallIV = (totalCallIV - initialCallIV)/totalCallIV * 100;
+    deltPutIV = (totalCallIV - initialCallIV)/totalPutIV * 100;
 
     if (!calculateChangeTimerStarted) {
         calculateChangeTimerStarted = true;
