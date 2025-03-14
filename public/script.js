@@ -190,6 +190,7 @@ function toggleLiveRefresh() {
     localStorage.removeItem('calculateChangeTimerActive');
     localStorage.removeItem('calculateChangeLastRun');
     initialCallVolume = 0; initialCallOI = 0; initialCallAskQty = 0; initialCallBidQty = 0; initialCallIV = 0; initialCallDelta = 0; initialPutVolume = 0; initialPutOI = 0; initialPutAskQty = 0; initialPutBidQty = 0; initialPutIV = 0; initialPutDelta = 0; initialprice = 0; deltCallvolume = 0; deltCalloi = 0; deltPutvolume = 0; deltPutoi = 0; deltCalldelta = 0; deltPutdelta = 0; deltCallIV = 0; deltPutIV = 0; initialdeltCallvolume = 0; initialdeltCalloi = 0; initialdeltPutvolume = 0; initialdeltPutoi = 0; initialdeltCalldelta = 0; initialdeltPutdelta = 0; initialdeltCallIV = 0; initialdeltPutIV = 0; changeinCallvolume = 0; changeinCallOI = 0; changeinPutvolume = 0; changeinPutOI = 0; changeinCallDelta = 0; changeinPutDelta = 0; changeinCallIV = 0; changeinPutIV = 0;
+    optionChainTableBody.innerHTML = '';
     stopCalculateChangeTimer(); // Stop the timer
   } else {
     worker.postMessage('start');
