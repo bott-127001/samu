@@ -400,20 +400,20 @@ function updateOptionChainData(optionChain, underlyingSpotPrice) {
 }
 function saveState() {
     const state = {
-
        // Total Variables
+    
        totalCallVolume,
        totalCallOI,
        totalCallAskQty,
        totalCallBidQty,
+       totalCalldelta,
        totalCallIV,
-       totalCallDelta,
        totalPutVolume,
        totalPutOI,
        totalPutAskQty,
        totalPutBidQty,
+       totalPutdelta,
        totalPutIV,
-       totalPutDelta,
       // Calculation variables
       initialCallVolume,
       initialCallOI,
