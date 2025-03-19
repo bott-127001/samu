@@ -3,20 +3,20 @@ document.addEventListener('DOMContentLoaded', () => {
     accessTokenInput.value = localStorage.getItem('accessToken') || '';
     authCodeInput.value = localStorage.getItem('authCode') || '';
     document.getElementById('expiryDate').value = localStorage.getItem('expiryDate') || '';
-    
+  
     // Restore Live Refresh state
     isLiveRefreshActive = localStorage.getItem('liveRefreshActive') === 'true';
     if (isLiveRefreshActive) {
       liveRefreshBtn.textContent = 'Stop Refresh';
       worker.postMessage('start'); // Restart background worker
       startCalculateChangeTimer(); // Restart calculation timer
-    }
-    
-    // Load state and populate table
-    const savedChain = localStorage.getItem('rawOptionChain');
-    if (savedChain) {
-      const underlyingPrice = localStorage.getItem('lastUnderlyingPrice');
-      updateOptionChainData(JSON.parse(savedChain), parseFloat(underlyingPrice));
+      
+      // Auto-populate existing data
+      const savedChain = localStorage.getItem('rawOptionChain');
+      if (savedChain) {
+        const underlyingPrice = localStorage.getItem('lastUnderlyingPrice');
+        updateOptionChainData(JSON.parse(savedChain), parseFloat(underlyingPrice));
+      }
     }
   });
 const getDataBtn = document.getElementById('getDataBtn');
@@ -168,34 +168,38 @@ async function fetchData() {
 
 
 
-// ========== Background Execution Control ==========
 function toggleLiveRefresh() {
     if (isLiveRefreshActive) {
-      // Stopping refresh manually
+      // User manually stopped refresh
       worker.postMessage('stop');
       liveRefreshBtn.textContent = 'Live Refresh';
       
-      // Clear localStorage ONLY when manually stopped
+      // Clear all stored data
       localStorage.removeItem('rawOptionChain');
       localStorage.removeItem('lastUnderlyingPrice');
       localStorage.removeItem('optionChainState');
-      localStorage.removeItem('calculateChangeTimerActive');
       localStorage.removeItem('calculateChangeLastRun');
       
-      // Clear the table
+      // ========== Original Variables ==========
+      initialCallVolume = 0; initialCallOI = 0; initialCallAskQty = 0; initialCallBidQty = 0; initialCallIV = 0; initialCallDelta = 0; initialPutVolume = 0; initialPutOI = 0; initialPutAskQty = 0; initialPutBidQty = 0; initialPutIV = 0; initialPutDelta = 0; initialprice = 0;
+
+      deltCallvolume = 0; deltCalloi = 0; deltPutvolume = 0; deltPutoi = 0; deltCalldelta = 0; deltPutdelta = 0; deltCallIV = 0; deltPutIV = 0;
+
+      initialdeltCallvolume = 0; initialdeltCalloi = 0; initialdeltPutvolume = 0; initialdeltPutoi = 0; initialdeltCalldelta = 0; initialdeltPutdelta = 0; initialdeltCallIV = 0; initialdeltPutIV = 0;
+
+      changeinCallvolume = 0; changeinCallOI = 0; changeinPutvolume = 0; changeinPutOI = 0; changeinCallDelta = 0; changeinPutDelta = 0; changeinCallIV = 0; changeinPutIV = 0;   
+
+      totalCallVolume , totalCallOI , totalCallAskQty , totalCallBidQty , totalCalldelta , totalCallIV; totalPutVolume , totalPutOI , totalPutAskQty , totalPutBidQty , totalPutdelta , totalPutIV; currentprice;
+      
+      // Clear UI
       optionChainTableBody.innerHTML = '';
       
-      // Reset calculation variables
-      resetCalculationState();
-      
-      // Stop the timer
+      // Stop timers
       stopCalculateChangeTimer();
     } else {
-      // Starting refresh
+      // User started refresh
       worker.postMessage('start');
       liveRefreshBtn.textContent = 'Stop Refresh';
-      
-      // Start the timer
       startCalculateChangeTimer();
     }
     
@@ -248,31 +252,29 @@ function calculateChange(deltCallvolume, deltCalloi, deltPutoi, deltPutvolume) {
 let calculateChangeTimer;
 
 function startCalculateChangeTimer() {
-    if (!isLiveRefreshActive) return; // Only start if Live Refresh is active
-    
-    // Clear existing timer
-    if (calculateChangeTimer) clearTimeout(calculateChangeTimer);
-  
-    // Get last execution time
-    const lastExecution = parseInt(localStorage.getItem('calculateChangeLastRun')) || Date.now();
-    const nextExecution = lastExecution + 900000; // 15 minutes
-    const remainingTime = nextExecution - Date.now();
-  
-    // Schedule next execution
-    calculateChangeTimer = setTimeout(() => {
-      changes = calculateChange(deltCallvolume, deltCalloi, deltPutoi, deltPutvolume);
-      localStorage.setItem('calculateChangeLastRun', Date.now());
-      startCalculateChangeTimer(); // Restart timer
-    }, Math.max(remainingTime, 0)); // Ensure non-negative
-  
-    localStorage.setItem('calculateChangeTimerActive', 'true');
-  }
+  // Clear existing timer
+  if (calculateChangeTimer) clearTimeout(calculateChangeTimer);
 
-  function stopCalculateChangeTimer() {
-    clearTimeout(calculateChangeTimer);
-    localStorage.removeItem('calculateChangeLastRun');
-    localStorage.removeItem('calculateChangeTimerActive');
-  }
+  // Get last execution time
+  const lastExecution = parseInt(localStorage.getItem('calculateChangeLastRun')) || Date.now();
+  const nextExecution = lastExecution + 900000; // 15 minutes
+  const remainingTime = nextExecution - Date.now();
+
+  // Schedule next execution
+  calculateChangeTimer = setTimeout(() => {
+    changes = calculateChange(deltCallvolume, deltCalloi, deltPutvolume, deltPutoi);
+    localStorage.setItem('calculateChangeLastRun', Date.now());
+    startCalculateChangeTimer(); // Restart timer
+  }, Math.max(remainingTime, 0));
+
+  localStorage.setItem('calculateChangeTimerActive', 'true');
+}
+
+function stopCalculateChangeTimer() {
+  clearTimeout(calculateChangeTimer);
+  localStorage.removeItem('calculateChangeLastRun');
+  localStorage.removeItem('calculateChangeTimerActive');
+}
 
 // ========== Original Update Function ==========
 function updateOptionChainData(optionChain, underlyingSpotPrice) {
@@ -498,6 +500,7 @@ function saveState() {
       expiryDate: document.getElementById('expiryDate').value,
       
       // UI state
+
       calculateChangeLastRun: localStorage.getItem('calculateChangeLastRun'),
       calculateChangeTimerActive: localStorage.getItem('calculateChangeTimerActive')
     };
