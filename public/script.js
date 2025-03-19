@@ -498,7 +498,6 @@ function saveState() {
       expiryDate: document.getElementById('expiryDate').value,
       
       // UI state
-      calculateChangeTimerStarted,
       calculateChangeLastRun: localStorage.getItem('calculateChangeLastRun'),
       calculateChangeTimerActive: localStorage.getItem('calculateChangeTimerActive')
     };
@@ -567,7 +566,7 @@ function saveState() {
 
     //Restore Expiry Date
     document.getElementById('expiryDate').value = savedState.expiryDate;
-    calculateChangeTimerStarted = savedState.calculateChangeTimerStarted || false;
+    calculateChangeTimerActive = savedState.calculateChangeTimerActive || false;
   }   
 
   function resetCalculationState() {
