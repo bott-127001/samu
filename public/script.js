@@ -1,22 +1,32 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Restore input fields
+    // Restore all input fields
     accessTokenInput.value = localStorage.getItem('accessToken') || '';
     authCodeInput.value = localStorage.getItem('authCode') || '';
-    document.getElementById('expiryDate').value = localStorage.getItem('expiryDate') || '';
-  
-    // Restore Live Refresh state
-    isLiveRefreshActive = localStorage.getItem('liveRefreshActive') === 'true';
-    if (isLiveRefreshActive) {
+    expiryDateInput.value = localStorage.getItem('expiryDate') || '';
+    
+    // Restore button states
+    if (localStorage.getItem('liveRefreshActive') === 'true') {
       liveRefreshBtn.textContent = 'Stop Refresh';
-      worker.postMessage('start'); // Restart background worker
-      startCalculateChangeTimer(); // Restart calculation timer
-      
-      // Auto-populate existing data
-      const savedChain = localStorage.getItem('rawOptionChain');
-      if (savedChain) {
-        const underlyingPrice = localStorage.getItem('lastUnderlyingPrice');
-        updateOptionChainData(JSON.parse(savedChain), parseFloat(underlyingPrice));
-      }
+    }
+  
+    // Load calculation state
+    loadState();
+
+    expiryDateInput.addEventListener('change', () => {
+    localStorage.setItem('expiryDate', expiryDateInput.value);
+    saveState(); // Optionally save the full state
+    });
+    
+    // Auto-populate table if data exists
+    const savedChain = localStorage.getItem('rawOptionChain');
+    if (savedChain) {
+      const underlyingPrice = localStorage.getItem('lastUnderlyingPrice');
+      updateOptionChainData(JSON.parse(savedChain), parseFloat(underlyingPrice));
+    }
+    
+    // Auto-start refresh if enabled
+    if (localStorage.getItem('liveRefreshActive') === 'true') {
+      toggleLiveRefresh();
     }
   });
 const getDataBtn = document.getElementById('getDataBtn');
@@ -96,9 +106,7 @@ let changeinPutDelta = 0;
 let changeinCallIV = 0;
 let changeinPutIV = 0;
 
-let totalCallVolume , totalCallOI , totalCallAskQty , totalCallBidQty , totalCalldelta , totalCallIV;
-let totalPutVolume , totalPutOI , totalPutAskQty , totalPutBidQty , totalPutdelta , totalPutIV;
-let currentprice;
+let calculateChangeTimerStarted = localStorage.getItem('calculateChangeTimer') === 'true';
 
 let changes;
 // ========== Event Listeners ==========
@@ -168,45 +176,18 @@ async function fetchData() {
 
 
 
+// ========== Background Execution Control ==========
 function toggleLiveRefresh() {
     if (isLiveRefreshActive) {
-      // User manually stopped refresh
-      worker.postMessage('stop');
-      liveRefreshBtn.textContent = 'Live Refresh';
-      
-      // Clear all stored data
-      localStorage.removeItem('rawOptionChain');
-      localStorage.removeItem('lastUnderlyingPrice');
-      localStorage.removeItem('optionChainState');
-      localStorage.removeItem('calculateChangeLastRun');
-      
-      // ========== Original Variables ==========
-      initialCallVolume = 0; initialCallOI = 0; initialCallAskQty = 0; initialCallBidQty = 0; initialCallIV = 0; initialCallDelta = 0; initialPutVolume = 0; initialPutOI = 0; initialPutAskQty = 0; initialPutBidQty = 0; initialPutIV = 0; initialPutDelta = 0; initialprice = 0;
-
-      deltCallvolume = 0; deltCalloi = 0; deltPutvolume = 0; deltPutoi = 0; deltCalldelta = 0; deltPutdelta = 0; deltCallIV = 0; deltPutIV = 0;
-
-      initialdeltCallvolume = 0; initialdeltCalloi = 0; initialdeltPutvolume = 0; initialdeltPutoi = 0; initialdeltCalldelta = 0; initialdeltPutdelta = 0; initialdeltCallIV = 0; initialdeltPutIV = 0;
-
-      changeinCallvolume = 0; changeinCallOI = 0; changeinPutvolume = 0; changeinPutOI = 0; changeinCallDelta = 0; changeinPutDelta = 0; changeinCallIV = 0; changeinPutIV = 0;   
-
-      totalCallVolume , totalCallOI , totalCallAskQty , totalCallBidQty , totalCalldelta , totalCallIV; totalPutVolume , totalPutOI , totalPutAskQty , totalPutBidQty , totalPutdelta , totalPutIV; currentprice;
-      
-      // Clear UI
-      optionChainTableBody.innerHTML = '';
-      
-      // Stop timers
-      stopCalculateChangeTimer();
+        worker.postMessage('stop');
+        liveRefreshBtn.textContent = 'Live Refresh';
     } else {
-      // User started refresh
-      worker.postMessage('start');
-      liveRefreshBtn.textContent = 'Stop Refresh';
-      startCalculateChangeTimer();
+        worker.postMessage('start');
+        liveRefreshBtn.textContent = 'Stop Refresh';
     }
-    
-    // Update state
     isLiveRefreshActive = !isLiveRefreshActive;
     localStorage.setItem('liveRefreshActive', isLiveRefreshActive);
-  }
+}
 
 // ========== State Management Functions ==========
 
@@ -243,37 +224,6 @@ function calculateChange(deltCallvolume, deltCalloi, deltPutoi, deltPutvolume) {
     initialdeltPutIV = deltPutIV;
     
     return { changeinCallvolume, changeinCallOI, changeinPutOI, changeinPutvolume, changeinCallDelta, changeinPutDelta, changeinCallIV, changeinPutIV };
-}
-
-//function for 15-min background fetching sustainance over reload
-// ========================
-// TIMER MANAGEMENT
-// ========================
-let calculateChangeTimer;
-
-function startCalculateChangeTimer() {
-  // Clear existing timer
-  if (calculateChangeTimer) clearTimeout(calculateChangeTimer);
-
-  // Get last execution time
-  const lastExecution = parseInt(localStorage.getItem('calculateChangeLastRun')) || Date.now();
-  const nextExecution = lastExecution + 900000; // 15 minutes
-  const remainingTime = nextExecution - Date.now();
-
-  // Schedule next execution
-  calculateChangeTimer = setTimeout(() => {
-    changes = calculateChange(deltCallvolume, deltCalloi, deltPutvolume, deltPutoi);
-    localStorage.setItem('calculateChangeLastRun', Date.now());
-    startCalculateChangeTimer(); // Restart timer
-  }, Math.max(remainingTime, 0));
-
-  localStorage.setItem('calculateChangeTimerActive', 'true');
-}
-
-function stopCalculateChangeTimer() {
-  clearTimeout(calculateChangeTimer);
-  localStorage.removeItem('calculateChangeLastRun');
-  localStorage.removeItem('calculateChangeTimerActive');
 }
 
 // ========== Original Update Function ==========
@@ -363,10 +313,14 @@ function updateOptionChainData(optionChain, underlyingSpotPrice) {
     deltPutvolume = (totalPutVolume-initialPutVolume)/totalPutVolume * 100;
     deltPutoi = (totalPutOI-initialPutOI)/totalPutOI * 100;
     deltPutdelta = (totalPutdelta-initialPutDelta)/totalPutdelta * 100;
-    deltPutIV = (totalCallIV - initialCallIV)/totalPutIV * 100;
+    deltCallIV = (totalCallIV - initialCallIV)/totalCallIV * 100;
 
-    if (localStorage.getItem('calculateChangeTimerActive') === 'true') {
-        startCalculateChangeTimer();
+    if (!calculateChangeTimerStarted) {
+        calculateChangeTimerStarted = true;
+        setInterval(() => {
+            changes = calculateChange(deltCallvolume, deltCalloi, deltPutoi, deltPutvolume);
+        }, 900000);
+        localStorage.setItem('calculateChangeTimer', 'true');
     }
 
     //displaying values in the table
@@ -422,8 +376,8 @@ function updateOptionChainData(optionChain, underlyingSpotPrice) {
     deltarow.innerHTML = `
     <td>${deltCallvolume.toFixed(3)}, ${changes?.changeinCallvolume?.toFixed(3) || '0.000'}</td>
     <td>${deltCalloi.toFixed(3)}, ${changes?.changeinCallOI?.toFixed(3) ||'0.000'}</td>
-    <td>${deltCallIV.toFixed(3)}, ${changes?.changeinCallIV?.toFixed(3) || '0.000'}</td>
-    <td>${deltCalldelta.toFixed(3)}, ${changes?.changeinCallDelta?.toFixed(3) || '0.000'}</td>
+    <td>${deltCallIV.toFixed(3)}, ${chnages?.changeinCallIV?.toFixed(3) || '0.000'}</td>
+    <td>${deltCalldelta.toFixed(3)}, ${chnages?.changeinCallDelta?.toFixed(3) || '0.000'}</td>
     <td></td>
     <td></td>
     <td></td>
@@ -435,8 +389,8 @@ function updateOptionChainData(optionChain, underlyingSpotPrice) {
     <td></td>
     <td></td>
     <td></td>
-    <td>${deltPutdelta.toFixed(3)}, ${changes?.changeinPutDelta?.toFixed(3) || '0.000'}</td>
-    <td>${deltPutIV.toFixed(3)}, ${changes?.changeinPutIV?.toFixed(3) || '0.000'}</td>
+    <td>${deltPutdelta.toFixed(3)}, ${chnages?.changeinPutDelta?.toFixed(3) || '0.000'}</td>
+    <td>${deltPutIV.toFixed(3)}, ${chnages?.changeinPutIV?.toFixed(3) || '0.000'}</td>
     <td>${deltPutoi.toFixed(3)}, ${changes?.changeinPutOI?.toFixed(3) || '0.000'}</td>
     <td>${deltPutvolume.toFixed(3)}, ${changes?.changeinPutvolume?.toFixed(3) || '0.000'}</td>
     `;
@@ -453,13 +407,13 @@ function saveState() {
        totalCallAskQty,
        totalCallBidQty,
        totalCallIV,
-       totalCalldelta,
+       totalCallDelta,
        totalPutVolume,
        totalPutOI,
        totalPutAskQty,
        totalPutBidQty,
        totalPutIV,
-       totalPutdelta,
+       totalPutDelta,
       // Calculation variables
       initialCallVolume,
       initialCallOI,
@@ -500,37 +454,27 @@ function saveState() {
       expiryDate: document.getElementById('expiryDate').value,
       
       // UI state
-
-      calculateChangeLastRun: localStorage.getItem('calculateChangeLastRun'),
-      calculateChangeTimerActive: localStorage.getItem('calculateChangeTimerActive')
+      calculateChangeTimerStarted
     };
     
     localStorage.setItem('optionChainState', JSON.stringify(state));
   } 
   function loadState() {
-    const savedState = JSON.parse(localStorage.getItem('optionChainState')) || '0';
-    
-    // Restore timer state
-    if (savedState.calculateChangeTimerActive) {
-        localStorage.setItem('calculateChangeTimerActive', savedState.calculateChangeTimerActive);
-    }
-    if (savedState.calculateChangeLastRun) {
-        localStorage.setItem('calculateChangeLastRun', savedState.calculateChangeLastRun);
-    }
+    const savedState = JSON.parse(localStorage.getItem('optionChainState')) || initialState;
     
     //Restore Total Variables
-    totalCallVolume = savedState.totalCallVolume || 0,
-    totalCallOI = savedState.totalCallOI || 0,
-    totalCallAskQty = savedState.totalCallAskQty || 0,
-    totalCallBidQty = savedState.totalCallBidQty || 0,
-    totalCallIV = savedState.totalCallIV || 0,
-    totalCalldelta = savedState.totalCallDelta || 0,
-    totalPutVolume = savedState.totalPutVolume || 0,
-    totalPutOI = savedState.totalPutOI || 0,
-    totalPutAskQty = savedState.totalPutAskQty || 0,
-    totalPutBidQty = savedState.totalPutBidQty || 0,
-    totalPutIV = savedState.totalPutIV || 0,
-    totalPutdelta = savedState.totalPutDelta || 0,
+    totalCallVolume = savedState.initialCallVolume || 0,
+    totalCallOI = savedState.initialCallOI || 0,
+    totalCallAskQty = savedState.initialCallAskQty || 0,
+    totalCallBidQty = savedState.initialCallBidQty || 0,
+    totalCallIV = savedState.initialCallIV || 0,
+    totalCallDelta = savedState.initialCallDelta || 0,
+    totalPutVolume = savedState.initialPutVolume || 0,
+    totalPutOI = savedState.initialPutOI || 0,
+    totalPutAskQty = savedState.initialPutAskQty || 0,
+    totalPutBidQty = savedState.initialPutBidQty || 0,
+    totalPutIV = savedState.initialPutIV || 0,
+    totalPutDelta = savedState.initialPutDelta || 0,
 
     // Restore calculation variables
     initialCallVolume = savedState.initialCallVolume || 0;
@@ -552,10 +496,10 @@ function saveState() {
     deltCalloi = savedState.deltCalloi || 0;
     deltPutvolume = savedState.deltPutvolume || 0;
     deltPutoi = savedState.deltPutoi || 0;
-    deltCallIV = savedState.deltCallIV || 0;
-    deltCalldelta = savedState.deltCalldelta || 0;
-    deltPutIV = savedState.deltPutIV || 0;
-    deltPutdelta = savedState.deltPutdelta || 0;
+    deltCallIV = saveState.deltCallIV || 0;
+    deltCalldelta = saveState.deltCalldelta || 0;
+    deltPutIV = saveState.deltPutIV || 0;
+    deltPutdelta = saveState.deltPutdelta || 0;
 
     changeinCallvolume = savedState.changeinCallvolume || 0;
     changeinCallOI = savedState.changeinCallOI || 0;
@@ -569,59 +513,10 @@ function saveState() {
 
     //Restore Expiry Date
     document.getElementById('expiryDate').value = savedState.expiryDate;
-    calculateChangeTimerActive = savedState.calculateChangeTimerActive || false;
+    
+    calculateChangeTimerStarted = savedState.calculateChangeTimerStarted || false;
   }   
 
-  function resetCalculationState() {
-       // Total Variables
-       totalCallVolume,
-       totalCallOI,
-       totalCallAskQty,
-       totalCallBidQty,
-       totalCallIV,
-       totalCalldelta,
-       totalPutVolume,
-       totalPutOI,
-       totalPutAskQty,
-       totalPutBidQty,
-       totalPutIV,
-       totalPutdelta,
-      // Calculation variables
-      initialCallVolume,
-      initialCallOI,
-      initialCallAskQty,
-      initialCallBidQty,
-      initialCallIV,
-      initialCallDelta,
-      initialPutVolume,
-      initialPutOI,
-      initialPutAskQty,
-      initialPutBidQty,
-      initialPutIV,
-      initialPutDelta,
-      initialprice,
-      
-      // Delta calculations
-      deltCallvolume,
-      deltCalloi,
-      deltPutvolume,
-      deltPutoi,
-      deltCallIV,
-      deltPutIV,
-      deltCalldelta,
-      deltPutdelta,
-      
-      
-      // Changes over time
-      changeinCallvolume,
-      changeinCallOI,
-      changeinPutvolume,
-      changeinPutOI,
-      changeinCallDelta,
-      changeinCallIV,
-      changeinPutDelta,
-      changeinPutIV
-  }
 
 // ========== Cleanup ==========
 window.addEventListener('beforeunload', () => {
