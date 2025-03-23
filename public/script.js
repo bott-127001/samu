@@ -1,32 +1,41 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Restore all input fields
+
+    const now = new Date();
+    const resetTime = new Date();
+    
+    // Set target time to today's 18:00 (6 PM)
+    resetTime.setHours(18, 0, 0, 0); // 24-hour format
+
+    // Check if we're past 6 PM today
+    if (now > resetTime) {
+        // Check last reset date
+        const lastReset = localStorage.getItem('lastDailyReset');
+        const lastResetDate = lastReset ? new Date(lastReset) : null;
+
+        // Only clear if not already reset today
+        if (!lastResetDate || lastResetDate < resetTime) {
+            localStorage.clear();
+            localStorage.setItem('lastDailyReset', resetTime.toISOString());
+        }
+    }
+    // Restore input fields
     accessTokenInput.value = localStorage.getItem('accessToken') || '';
     authCodeInput.value = localStorage.getItem('authCode') || '';
-    expiryDateInput.value = localStorage.getItem('expiryDate') || '';
-    
-    // Restore button states
-    if (localStorage.getItem('liveRefreshActive') === 'true') {
-      liveRefreshBtn.textContent = 'Stop Refresh';
-    }
+    document.getElementById('expiryDate').value = localStorage.getItem('expiryDate') || '';
   
-    // Load calculation state
-    loadState();
-
-    expiryDateInput.addEventListener('change', () => {
-    localStorage.setItem('expiryDate', expiryDateInput.value);
-    saveState(); // Optionally save the full state
-    });
-    
-    // Auto-populate table if data exists
-    const savedChain = localStorage.getItem('rawOptionChain');
-    if (savedChain) {
-      const underlyingPrice = localStorage.getItem('lastUnderlyingPrice');
-      updateOptionChainData(JSON.parse(savedChain), parseFloat(underlyingPrice));
-    }
-    
-    // Auto-start refresh if enabled
-    if (localStorage.getItem('liveRefreshActive') === 'true') {
-      toggleLiveRefresh();
+    // Restore Live Refresh state
+    isLiveRefreshActive = localStorage.getItem('liveRefreshActive') === 'true';
+    if (isLiveRefreshActive) {
+      liveRefreshBtn.textContent = 'Stop Refresh';
+      worker.postMessage('start'); // Restart background worker
+      startCalculateChangeTimer(); // Restart calculation timer
+      
+      // Auto-populate existing data
+      const savedChain = localStorage.getItem('rawOptionChain');
+      if (savedChain) {
+        const underlyingPrice = localStorage.getItem('lastUnderlyingPrice');
+        updateOptionChainData(JSON.parse(savedChain), parseFloat(underlyingPrice));
+      }
     }
   });
 const getDataBtn = document.getElementById('getDataBtn');
