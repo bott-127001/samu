@@ -75,6 +75,11 @@ let changes = {
     CallVolume: 0, CallOI: 0, PutVolume: 0, PutOI: 0, CallDelta: 0, PutDelta: 0, CallIV: 0, PutIV: 0
 };
 
+let totals = {
+    CallVolume: 0, CallOI: 0, CallAskQty: 0, CallBidQty: 0, CallIV: 0, CallDelta: 0,
+    PutVolume: 0, PutOI: 0, PutAskQty: 0, PutBidQty: 0, PutIV: 0, PutDelta: 0
+};
+
 getDataBtn.addEventListener('click', fetchData);
 liveRefreshBtn.addEventListener('click', toggleLiveRefresh);
 loginBtn.addEventListener('click', startAuthentication);
@@ -208,11 +213,6 @@ function stopCalculateChangeTimer() {
 
 function updateOptionChainData(optionChain, underlyingSpotPrice) {
     optionChainTableBody.innerHTML = '';
-
-    let totals = {
-        CallVolume: 0, CallOI: 0, CallAskQty: 0, CallBidQty: 0, CallIV: 0, CallDelta: 0,
-        PutVolume: 0, PutOI: 0, PutAskQty: 0, PutBidQty: 0, PutIV: 0, PutDelta: 0
-    };
 
     optionChain.forEach(item => {
         const strikePrice = item.strike_price;
