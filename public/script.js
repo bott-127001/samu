@@ -1,43 +1,38 @@
 document.addEventListener('DOMContentLoaded', () => {
-
     const now = new Date();
     const resetTime = new Date();
-    
-    // Set target time to today's 18:00 (6 PM)
-    resetTime.setHours(18, 0, 0, 0); // 24-hour format
+    resetTime.setHours(18, 0, 0, 0); // Set target time to today's 18:00 (6 PM)
 
-    // Check if we're past 6 PM today
     if (now > resetTime) {
-        // Check last reset date
         const lastReset = localStorage.getItem('lastDailyReset');
         const lastResetDate = lastReset ? new Date(lastReset) : null;
 
-        // Only clear if not already reset today
         if (!lastResetDate || lastResetDate < resetTime) {
             localStorage.clear();
             localStorage.setItem('lastDailyReset', resetTime.toISOString());
         }
     }
+
     // Restore input fields
     accessTokenInput.value = localStorage.getItem('accessToken') || '';
     authCodeInput.value = localStorage.getItem('authCode') || '';
     document.getElementById('expiryDate').value = localStorage.getItem('expiryDate') || '';
-  
+
     // Restore Live Refresh state
     isLiveRefreshActive = localStorage.getItem('liveRefreshActive') === 'true';
     if (isLiveRefreshActive) {
-      liveRefreshBtn.textContent = 'Stop Refresh';
-      worker.postMessage('start'); // Restart background worker
-      startCalculateChangeTimer(); // Restart calculation timer
-      
-      // Auto-populate existing data
-      const savedChain = localStorage.getItem('rawOptionChain');
-      if (savedChain) {
-        const underlyingPrice = localStorage.getItem('lastUnderlyingPrice');
-        updateOptionChainData(JSON.parse(savedChain), parseFloat(underlyingPrice));
-      }
+        liveRefreshBtn.textContent = 'Stop Refresh';
+        worker.postMessage('start');
+        startCalculateChangeTimer();
+
+        const savedChain = localStorage.getItem('rawOptionChain');
+        if (savedChain) {
+            const underlyingPrice = localStorage.getItem('lastUnderlyingPrice');
+            updateOptionChainData(JSON.parse(savedChain), parseFloat(underlyingPrice));
+        }
     }
-  });
+});
+
 const getDataBtn = document.getElementById('getDataBtn');
 const liveRefreshBtn = document.getElementById('liveRefreshBtn');
 const loginBtn = document.getElementById('loginBtn');
@@ -47,86 +42,46 @@ const sendAuthCodeBtn = document.getElementById('sendAuthCodeBtn');
 const optionChainTableBody = document.getElementById('optionChainTableBody');
 const expiryDateInput = document.getElementById('expiryDate');
 
-// ========== Background Execution Setup ==========
 let worker;
-let calculateChangeinterval;
-let liveRefreshInterval;
+let calculateChangeInterval;
 let isLiveRefreshActive = localStorage.getItem('liveRefreshActive') === 'true';
 
-// Web Worker for background execution
 if (window.Worker) {
     worker = new Worker('worker.js');
-    
+
     worker.onmessage = function(e) {
         if (e.data === 'fetch') {
             fetchData();
         }
     };
 
-    // Restore previous state
     if (isLiveRefreshActive) {
         worker.postMessage('start');
         liveRefreshBtn.textContent = 'Stop Refresh';
     }
 }
 
-// ========== Original Variables ==========
-let initialCallVolume = 0;
-let initialCallOI = 0;
-let initialCallAskQty = 0;
-let initialCallBidQty = 0;
-let initialCallIV = 0;
-let initialCallDelta = 0;
+let initialValues = {
+    CallVolume: 0, CallOI: 0, CallAskQty: 0, CallBidQty: 0, CallIV: 0, CallDelta: 0,
+    PutVolume: 0, PutOI: 0, PutAskQty: 0, PutBidQty: 0, PutIV: 0, PutDelta: 0,
+    price: 0
+};
 
-let initialPutVolume = 0;
-let initialPutOI = 0;
-let initialPutAskQty = 0;
-let initialPutBidQty = 0;
-let initialPutIV = 0;
-let initialPutDelta = 0;
+let deltas = {
+    CallVolume: 0, CallOI: 0, PutVolume: 0, PutOI: 0, CallDelta: 0, PutDelta: 0, CallIV: 0, PutIV: 0
+};
 
-let initialprice = 0;
+let changes = {
+    CallVolume: 0, CallOI: 0, PutVolume: 0, PutOI: 0, CallDelta: 0, PutDelta: 0, CallIV: 0, PutIV: 0
+};
 
-let deltCallvolume = 0;
-let deltCalloi = 0;
-let deltPutvolume = 0;
-let deltPutoi = 0;
-let deltCalldelta = 0;
-let deltPutdelta = 0;
-let deltCallIV = 0;
-let deltPutIV = 0;
-
-let initialdeltCallvolume = 0;
-let initialdeltCalloi = 0;
-let initialdeltPutvolume = 0;
-let initialdeltPutoi = 0;
-let initialdeltCalldelta = 0;
-let initialdeltPutdelta = 0;
-let initialdeltCallIV = 0;
-let initialdeltPutIV = 0;
-
-
-let changeinCallvolume = 0;
-let changeinCallOI = 0;
-let changeinPutvolume = 0;
-let changeinPutOI = 0;
-let changeinCallDelta = 0;
-let changeinPutDelta = 0;
-let changeinCallIV = 0;
-let changeinPutIV = 0;
-
-let calculateChangeTimerStarted = localStorage.getItem('calculateChangeTimer') === 'true';
-
-let changes;
-// ========== Event Listeners ==========
 getDataBtn.addEventListener('click', fetchData);
 liveRefreshBtn.addEventListener('click', toggleLiveRefresh);
 loginBtn.addEventListener('click', startAuthentication);
 sendAuthCodeBtn.addEventListener('click', submitAuthCode);
 
-// ========== Core Functions ==========
 function startAuthentication() {
-    const authUrl = '/login'; 
+    const authUrl = '/login';
     window.open(authUrl, '_blank');
 }
 
@@ -138,10 +93,7 @@ function submitAuthCode() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ authCode }),
     })
-    .then(response => {
-        if (!response.ok) throw new Error('Network response was not ok');
-        return response.json();
-    })
+    .then(response => response.json())
     .then(data => {
         accessTokenInput.value = data.accessToken;
         localStorage.setItem('accessToken', data.accessToken);
@@ -164,10 +116,8 @@ async function fetchData() {
 
     try {
         const response = await fetch(`/option-chain?accessToken=${accessToken}&expiryDate=${inputDate}`);
-        if (!response.ok) throw new Error('Network response was not ok');
-        
         const data = await response.json();
-        
+
         if (data.status === "success" && Array.isArray(data.data)) {
             const underlyingSpotPrice = data.data[0].underlying_spot_price;
             localStorage.setItem('rawOptionChain', JSON.stringify(data.data));
@@ -182,94 +132,110 @@ async function fetchData() {
     }
 }
 
-
-
-
-// ========== Background Execution Control ==========
 function toggleLiveRefresh() {
     if (isLiveRefreshActive) {
         worker.postMessage('stop');
         liveRefreshBtn.textContent = 'Live Refresh';
+        localStorage.removeItem('rawOptionChain');
+        localStorage.removeItem('lastUnderlyingPrice');
+        localStorage.removeItem('optionChainState');
+        localStorage.removeItem('calculateChangeLastRun');
+        resetInitialValues();
+        optionChainTableBody.innerHTML = '';
+        stopCalculateChangeTimer();
     } else {
         worker.postMessage('start');
         liveRefreshBtn.textContent = 'Stop Refresh';
+        startCalculateChangeTimer();
     }
+
     isLiveRefreshActive = !isLiveRefreshActive;
     localStorage.setItem('liveRefreshActive', isLiveRefreshActive);
 }
 
-// ========== State Management Functions ==========
-
-
-function calculateChange(deltCallvolume, deltCalloi, deltPutoi, deltPutvolume) {
-    if (!initialdeltCallvolume) {
-        initialdeltCallvolume = deltCallvolume;
-        initialdeltCalloi = deltCalloi;
-        initialdeltPutvolume = deltPutvolume;
-        initialdeltPutoi = deltPutoi;
-        initialdeltCalldelta = deltCalldelta;
-        initialdeltPutdelta = deltPutdelta;
-        initialdeltCallIV = deltCallIV;
-        initialdeltPutIV = deltPutIV;
-        return { changeinCallvolume, changeinCallOI, changeinPutOI, changeinPutvolume, changeinCallDelta, changeinPutDelta, changeinCallIV, changeinPutIV };
-    }
-
-    changeinCallvolume = deltCallvolume - initialdeltCallvolume;
-    changeinCallOI = deltCalloi - initialdeltCalloi;
-    changeinPutvolume = deltPutvolume - initialdeltPutvolume;
-    changeinPutOI = deltPutoi - initialdeltPutoi;
-    changeinCallDelta = deltCalldelta - initialdeltCalldelta;
-    changeinPutDelta = deltPutdelta - initialdeltPutdelta;
-    changeinCallIV = deltCallIV - initialdeltCallIV;
-    changeinPutIV = deltPutIV - initialdeltPutIV;
-
-    initialdeltCallvolume = deltCallvolume;
-    initialdeltCalloi = deltCalloi;
-    initialdeltPutvolume = deltPutvolume;
-    initialdeltPutoi = deltPutoi;
-    initialdeltCalldelta = deltCalldelta;
-    initialdeltPutdelta = deltPutdelta;
-    initialdeltCallIV = deltCallIV;
-    initialdeltPutIV = deltPutIV;
-    
-    return { changeinCallvolume, changeinCallOI, changeinPutOI, changeinPutvolume, changeinCallDelta, changeinPutDelta, changeinCallIV, changeinPutIV };
+function resetInitialValues() {
+    initialValues = {
+        CallVolume: 0, CallOI: 0, CallAskQty: 0, CallBidQty: 0, CallIV: 0, CallDelta: 0,
+        PutVolume: 0, PutOI: 0, PutAskQty: 0, PutBidQty: 0, PutIV: 0, PutDelta: 0,
+        price: 0
+    };
 }
 
-// ========== Original Update Function ==========
+function calculateChange() {
+    if (!initialValues.CallVolume) {
+        initialValues = { ...deltas };
+        return changes;
+    }
+
+    changes = {
+        CallVolume: deltas.CallVolume - initialValues.CallVolume,
+        CallOI: deltas.CallOI - initialValues.CallOI,
+        PutVolume: deltas.PutVolume - initialValues.PutVolume,
+        PutOI: deltas.PutOI - initialValues.PutOI,
+        CallDelta: deltas.CallDelta - initialValues.CallDelta,
+        PutDelta: deltas.PutDelta - initialValues.PutDelta,
+        CallIV: deltas.CallIV - initialValues.CallIV,
+        PutIV: deltas.PutIV - initialValues.PutIV
+    };
+
+    initialValues = { ...deltas };
+    return changes;
+}
+
+let calculateChangeTimer;
+
+function startCalculateChangeTimer() {
+    if (calculateChangeTimer) clearTimeout(calculateChangeTimer);
+
+    const lastExecution = parseInt(localStorage.getItem('calculateChangeLastRun')) || Date.now();
+    const nextExecution = lastExecution + 900000;
+    const remainingTime = nextExecution - Date.now();
+
+    calculateChangeTimer = setTimeout(() => {
+        calculateChange();
+        localStorage.setItem('calculateChangeLastRun', Date.now());
+        startCalculateChangeTimer();
+    }, Math.max(remainingTime, 0));
+
+    localStorage.setItem('calculateChangeTimerActive', 'true');
+}
+
+function stopCalculateChangeTimer() {
+    clearTimeout(calculateChangeTimer);
+    localStorage.removeItem('calculateChangeLastRun');
+    localStorage.removeItem('calculateChangeTimerActive');
+}
+
 function updateOptionChainData(optionChain, underlyingSpotPrice) {
     optionChainTableBody.innerHTML = '';
 
-    let totalCallVolume = 0, totalCallOI = 0, totalCallAskQty = 0, totalCallBidQty = 0, totalCalldelta = 0, totalCallIV = 0;
-    let totalPutVolume = 0, totalPutOI = 0, totalPutAskQty = 0, totalPutBidQty = 0, totalPutdelta = 0, totalPutIV = 0;
-    let currentprice = underlyingSpotPrice;
+    let totals = {
+        CallVolume: 0, CallOI: 0, CallAskQty: 0, CallBidQty: 0, CallIV: 0, CallDelta: 0,
+        PutVolume: 0, PutOI: 0, PutAskQty: 0, PutBidQty: 0, PutIV: 0, PutDelta: 0
+    };
 
     optionChain.forEach(item => {
         const strikePrice = item.strike_price;
-        let currentprice = underlyingSpotPrice;
-
-        // Determine if the strike is ATM or OTM
         const isATM = strikePrice === underlyingSpotPrice;
-        const isOTMCall = strikePrice > underlyingSpotPrice; // OTM for calls
-        const isOTMPut = strikePrice < underlyingSpotPrice; // OTM for puts
+        const isOTMCall = strikePrice > underlyingSpotPrice;
+        const isOTMPut = strikePrice < underlyingSpotPrice;
 
-        // Accumulate totals for Call options
         if (isATM || isOTMCall) {
-            totalCallVolume += item.call_options.market_data.volume;
-            totalCallOI += item.call_options.market_data.oi;
-            totalCallAskQty += item.call_options.market_data.ask_qty;
-            totalCallBidQty += item.call_options.market_data.bid_qty;
-            totalCalldelta += item.call_options.option_greeks.delta;
-            totalCallIV += item.call_options.option_greeks.iv;
+            totals.CallVolume += item.call_options.market_data.volume;
+            totals.CallOI += item.call_options.market_data.oi;
+            totals.CallAskQty += item.call_options.market_data.ask_qty;
+            totals.CallBidQty += item.call_options.market_data.bid_qty;
+            totals.CallDelta += item.call_options.option_greeks.delta;
+            totals.CallIV += item.call_options.option_greeks.iv;
         }
 
-        // Accumulate totals for Put options
         if (isATM || isOTMPut) {
-            totalPutVolume += item.put_options.market_data.volume;
-            totalPutOI += item.put_options.market_data.oi;
-            totalPutAskQty += item.put_options.market_data.ask_qty;
-            totalPutBidQty += item.put_options.market_data.bid_qty;
-            totalPutdelta += item.put_options.option_greeks.delta;
-            totalPutIV += item.put_options.option_greeks.iv;
+            totals.PutVolume += item.put_options.market_data.volume;
+            totals.PutOI += item.put_options.market_data.oi;
+            totals.PutAskQty += item.put_options.market_data.ask_qty;
+            totals.PutBidQty += item.put_options.market_data.bid_qty;
+            totals.PutDelta += item.put_options.option_greeks.delta;
+            totals.PutIV += item.put_options.option_greeks.iv;
         }
 
         const row = document.createElement('tr');
@@ -297,237 +263,133 @@ function updateOptionChainData(optionChain, underlyingSpotPrice) {
         optionChainTableBody.appendChild(row);
     });
 
-    if (!initialCallVolume) {
-        initialCallVolume = totalCallVolume;
-        initialCallOI = totalCallOI;
-        initialCallAskQty = totalCallAskQty;
-        initialCallBidQty = totalCallBidQty;
-        initialCallIV = totalCallIV;
-        initialCallDelta = totalCalldelta;
-        initialPutVolume = totalPutVolume;
-        initialPutOI = totalPutOI;
-        initialPutAskQty = totalPutAskQty;
-        initialPutBidQty = totalPutBidQty;
-        initialPutIV = totalPutIV;
-        initialPutDelta = totalPutdelta;
-        initialprice = currentprice;
+    if (!initialValues.CallVolume) {
+        initialValues = { ...totals, price: underlyingSpotPrice };
     }
 
-    deltCallvolume = (totalCallVolume-initialCallVolume)/totalCallVolume * 100;
-    deltCalloi = (totalCallOI-initialCallOI)/totalCallOI * 100;
-    deltCalldelta = (totalCalldelta - initialCallDelta)/totalCalldelta * 100;
-    deltCallIV = (totalCallIV - initialCallIV)/totalCallIV * 100;
-    
+    deltas = {
+        CallVolume: (totals.CallVolume - initialValues.CallVolume) / totals.CallVolume * 100,
+        CallOI: (totals.CallOI - initialValues.CallOI) / totals.CallOI * 100,
+        CallDelta: (totals.CallDelta - initialValues.CallDelta) / totals.CallDelta * 100,
+        CallIV: (totals.CallIV - initialValues.CallIV) / totals.CallIV * 100,
+        PutVolume: (totals.PutVolume - initialValues.PutVolume) / totals.PutVolume * 100,
+        PutOI: (totals.PutOI - initialValues.PutOI) / totals.PutOI * 100,
+        PutDelta: (totals.PutDelta - initialValues.PutDelta) / totals.PutDelta * 100,
+        PutIV: (totals.PutIV - initialValues.PutIV) / totals.PutIV * 100
+    };
 
-    deltPutvolume = (totalPutVolume-initialPutVolume)/totalPutVolume * 100;
-    deltPutoi = (totalPutOI-initialPutOI)/totalPutOI * 100;
-    deltPutdelta = (totalPutdelta-initialPutDelta)/totalPutdelta * 100;
-    deltCallIV = (totalCallIV - initialCallIV)/totalCallIV * 100;
-
-    if (!calculateChangeTimerStarted) {
-        calculateChangeTimerStarted = true;
-        setInterval(() => {
-            changes = calculateChange(deltCallvolume, deltCalloi, deltPutoi, deltPutvolume);
-        }, 900000);
-        localStorage.setItem('calculateChangeTimer', 'true');
+    if (localStorage.getItem('calculateChangeTimerActive') === 'true') {
+        startCalculateChangeTimer();
     }
 
-    //displaying values in the table
     const totalRow = document.createElement('tr');
     totalRow.innerHTML = `
-        <td>${totalCallVolume}</td>
-        <td>${totalCallOI}</td>
-        <td>${totalCallIV.toFixed(2)}</td>
-        <td>${totalCalldelta.toFixed(2)}</td>
+        <td>${totals.CallVolume}</td>
+        <td>${totals.CallOI}</td>
+        <td>${totals.CallIV.toFixed(2)}</td>
+        <td>${totals.CallDelta.toFixed(2)}</td>
         <td></td>
-        <td>${totalCallBidQty}</td>
-        <td></td>
-        <td></td>
-        <td>${totalCallAskQty}</td>
-        <td></td>
-        <td>${totalPutAskQty}</td>
+        <td>${totals.CallBidQty}</td>
         <td></td>
         <td></td>
-        <td>${totalPutBidQty}</td>
+        <td>${totals.CallAskQty}</td>
         <td></td>
-        <td>${totalPutdelta.toFixed(2)}</td>
-        <td>${totalPutIV.toFixed(2)}</td>
-        <td>${totalPutOI}</td>
-        <td>${totalPutVolume}</td>
+        <td>${totals.PutAskQty}</td>
+        <td></td>
+        <td></td>
+        <td>${totals.PutBidQty}</td>
+        <td></td>
+        <td>${totals.PutDelta.toFixed(2)}</td>
+        <td>${totals.PutIV.toFixed(2)}</td>
+        <td>${totals.PutOI}</td>
+        <td>${totals.PutVolume}</td>
     `;
     optionChainTableBody.appendChild(totalRow);
 
     const diffRow = document.createElement('tr');
     diffRow.innerHTML = `
-    <td>${totalCallVolume - initialCallVolume}</td>
-    <td>${totalCallOI - initialCallOI}</td>
-    <td>${(totalCallIV - initialCallIV).toFixed(4)}</td>
-    <td>${(totalCalldelta - initialCallDelta).toFixed(4)}</td>
-    <td></td>
-    <td>${totalCallBidQty - initialCallBidQty}</td>
-    <td></td>
-    <td></td>
-    <td>${totalCallAskQty - initialCallAskQty}</td>
-    <td></td>
-    <td>${totalPutAskQty - initialPutAskQty}</td>
-    <td></td>
-    <td></td>
-    <td>${totalPutBidQty - initialPutBidQty}</td>
-    <td></td>
-    <td>>${(totalPutdelta - initialPutDelta).toFixed(4)}</td>
-    <td>${(totalPutIV - initialPutIV).toFixed(4)}</td>
-    <td>${totalPutOI - initialPutOI}</td>
-    <td>${totalPutVolume - initialPutVolume}</td>
+        <td>${totals.CallVolume - initialValues.CallVolume}</td>
+        <td>${totals.CallOI - initialValues.CallOI}</td>
+        <td>${(totals.CallIV - initialValues.CallIV).toFixed(4)}</td>
+        <td>${(totals.CallDelta - initialValues.CallDelta).toFixed(4)}</td>
+        <td></td>
+        <td>${totals.CallBidQty - initialValues.CallBidQty}</td>
+        <td></td>
+        <td></td>
+        <td>${totals.CallAskQty - initialValues.CallAskQty}</td>
+        <td></td>
+        <td>${totals.PutAskQty - initialValues.PutAskQty}</td>
+        <td></td>
+        <td></td>
+        <td>${totals.PutBidQty - initialValues.PutBidQty}</td>
+        <td></td>
+        <td>${(totals.PutDelta - initialValues.PutDelta).toFixed(4)}</td>
+        <td>${(totals.PutIV - initialValues.PutIV).toFixed(4)}</td>
+        <td>${totals.PutOI - initialValues.PutOI}</td>
+        <td>${totals.PutVolume - initialValues.PutVolume}</td>
     `;
     optionChainTableBody.appendChild(diffRow);
 
-    const deltarow = document.createElement('tr');
-    deltarow.innerHTML = `
-    <td>${deltCallvolume.toFixed(3)}, ${changes?.changeinCallvolume?.toFixed(3) || '0.000'}</td>
-    <td>${deltCalloi.toFixed(3)}, ${changes?.changeinCallOI?.toFixed(3) ||'0.000'}</td>
-    <td>${deltCallIV.toFixed(3)}, ${chnages?.changeinCallIV?.toFixed(3) || '0.000'}</td>
-    <td>${deltCalldelta.toFixed(3)}, ${chnages?.changeinCallDelta?.toFixed(3) || '0.000'}</td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td>${deltPutdelta.toFixed(3)}, ${chnages?.changeinPutDelta?.toFixed(3) || '0.000'}</td>
-    <td>${deltPutIV.toFixed(3)}, ${chnages?.changeinPutIV?.toFixed(3) || '0.000'}</td>
-    <td>${deltPutoi.toFixed(3)}, ${changes?.changeinPutOI?.toFixed(3) || '0.000'}</td>
-    <td>${deltPutvolume.toFixed(3)}, ${changes?.changeinPutvolume?.toFixed(3) || '0.000'}</td>
+    const deltaRow = document.createElement('tr');
+    deltaRow.innerHTML = `
+        <td>${deltas.CallVolume.toFixed(3)}, ${changes.CallVolume?.toFixed(3) || '0.000'}</td>
+        <td>${deltas.CallOI.toFixed(3)}, ${changes.CallOI?.toFixed(3) || '0.000'}</td>
+        <td>${deltas.CallIV.toFixed(3)}, ${changes.CallIV?.toFixed(3) || '0.000'}</td>
+        <td>${deltas.CallDelta.toFixed(3)}, ${changes.CallDelta?.toFixed(3) || '0.000'}</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td>${deltas.PutDelta.toFixed(3)}, ${changes.PutDelta?.toFixed(3) || '0.000'}</td>
+        <td>${deltas.PutIV.toFixed(3)}, ${changes.PutIV?.toFixed(3) || '0.000'}</td>
+        <td>${deltas.PutOI.toFixed(3)}, ${changes.PutOI?.toFixed(3) || '0.000'}</td>
+        <td>${deltas.PutVolume.toFixed(3)}, ${changes.PutVolume?.toFixed(3) || '0.000'}</td>
     `;
-    optionChainTableBody.appendChild(deltarow);
-    saveState();
+    optionChainTableBody.appendChild(deltaRow);
 
+    saveState();
 }
+
 function saveState() {
     const state = {
-       // Total Variables
-    
-       totalCallVolume,
-       totalCallOI,
-       totalCallAskQty,
-       totalCallBidQty,
-       totalCalldelta,
-       totalCallIV,
-       totalPutVolume,
-       totalPutOI,
-       totalPutAskQty,
-       totalPutBidQty,
-       totalPutdelta,
-       totalPutIV,
-      // Calculation variables
-      initialCallVolume,
-      initialCallOI,
-      initialCallAskQty,
-      initialCallBidQty,
-      initialCallIV,
-      initialCallDelta,
-      initialPutVolume,
-      initialPutOI,
-      initialPutAskQty,
-      initialPutBidQty,
-      initialPutIV,
-      initialPutDelta,
-      initialprice,
-      
-      // Delta calculations
-      deltCallvolume,
-      deltCalloi,
-      deltPutvolume,
-      deltPutoi,
-      deltCallIV,
-      deltPutIV,
-      deltCalldelta,
-      deltPutdelta,
-      
-      
-      // Changes over time
-      changeinCallvolume,
-      changeinCallOI,
-      changeinPutvolume,
-      changeinPutOI,
-      changeinCallDelta,
-      changeinCallIV,
-      changeinPutDelta,
-      changeinPutIV,
-
-      //Expiry Date
-      expiryDate: document.getElementById('expiryDate').value,
-      
-      // UI state
-      calculateChangeTimerStarted
+        totals,
+        initialValues,
+        deltas,
+        changes,
+        expiryDate: document.getElementById('expiryDate').value,
+        calculateChangeLastRun: localStorage.getItem('calculateChangeLastRun'),
+        calculateChangeTimerActive: localStorage.getItem('calculateChangeTimerActive')
     };
-    
+
     localStorage.setItem('optionChainState', JSON.stringify(state));
-  } 
-  function loadState() {
-    const savedState = JSON.parse(localStorage.getItem('optionChainState')) || initialState;
-    
-    //Restore Total Variables
-    totalCallVolume = savedState.initialCallVolume || 0,
-    totalCallOI = savedState.initialCallOI || 0,
-    totalCallAskQty = savedState.initialCallAskQty || 0,
-    totalCallBidQty = savedState.initialCallBidQty || 0,
-    totalCallIV = savedState.initialCallIV || 0,
-    totalCallDelta = savedState.initialCallDelta || 0,
-    totalPutVolume = savedState.initialPutVolume || 0,
-    totalPutOI = savedState.initialPutOI || 0,
-    totalPutAskQty = savedState.initialPutAskQty || 0,
-    totalPutBidQty = savedState.initialPutBidQty || 0,
-    totalPutIV = savedState.initialPutIV || 0,
-    totalPutDelta = savedState.initialPutDelta || 0,
+}
 
-    // Restore calculation variables
-    initialCallVolume = savedState.initialCallVolume || 0;
-    initialCallOI = savedState.initialCallOI || 0;
-    initialCallAskQty = savedState.initialCallAskQty || 0;
-    initialCallBidQty = savedState.initialCallBidQty || 0;
-    initialCallIV = savedState.initialCallIV || 0;
-    initialCallDelta = savedState.initialCallDelta || 0;
-    initialPutVolume = savedState.initialPutVolume || 0;
-    initialPutOI = savedState.initialPutOI || 0;
-    initialPutAskQty = savedState.initialPutAskQty || 0;
-    initialPutBidQty = savedState.initialPutBidQty || 0;
-    initialPutIV = savedState.initialPutIV || 0;
-    initialPutDelta = savedState.initialPutDelta || 0;
-    initialprice = savedState.initialprice || 0;
-    
-    // Restore deltas and changes
-    deltCallvolume = savedState.deltCallvolume || 0;
-    deltCalloi = savedState.deltCalloi || 0;
-    deltPutvolume = savedState.deltPutvolume || 0;
-    deltPutoi = savedState.deltPutoi || 0;
-    deltCallIV = saveState.deltCallIV || 0;
-    deltCalldelta = saveState.deltCalldelta || 0;
-    deltPutIV = saveState.deltPutIV || 0;
-    deltPutdelta = saveState.deltPutdelta || 0;
+function loadState() {
+    const savedState = JSON.parse(localStorage.getItem('optionChainState')) || {};
 
-    changeinCallvolume = savedState.changeinCallvolume || 0;
-    changeinCallOI = savedState.changeinCallOI || 0;
-    changeinPutvolume = savedState.changeinPutvolume || 0;
-    changeinPutOI = savedState.changeinPutOI || 0;
-    changeinCallDelta = savedState.changeinCallDelta || 0;
-    changeinCallIV = savedState.changeinCallIV || 0;
-    changeinPutDelta = savedState.changeinPutDelta || 0;
-    changeinPutIV = savedState.changeinPutIV || 0;
+    if (savedState.calculateChangeTimerActive) {
+        localStorage.setItem('calculateChangeTimerActive', savedState.calculateChangeTimerActive);
+    }
+    if (savedState.calculateChangeLastRun) {
+        localStorage.setItem('calculateChangeLastRun', savedState.calculateChangeLastRun);
+    }
 
+    totals = savedState.totals || { ...initialValues };
+    initialValues = savedState.initialValues || { ...initialValues };
+    deltas = savedState.deltas || { ...deltas };
+    changes = savedState.changes || { ...changes };
 
-    //Restore Expiry Date
-    document.getElementById('expiryDate').value = savedState.expiryDate;
-    
-    calculateChangeTimerStarted = savedState.calculateChangeTimerStarted || false;
-  }   
+    document.getElementById('expiryDate').value = savedState.expiryDate || '';
+    calculateChangeTimerActive = savedState.calculateChangeTimerActive || false;
+}
 
-
-// ========== Cleanup ==========
 window.addEventListener('beforeunload', () => {
     if (worker) worker.postMessage('stop');
     saveState();
