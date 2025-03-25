@@ -1,3 +1,4 @@
+//money making mahchine (source code)
 document.addEventListener('DOMContentLoaded', () => {
     const now = new Date();
     const resetTime = new Date();
