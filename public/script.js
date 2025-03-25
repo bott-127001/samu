@@ -18,12 +18,19 @@ document.addEventListener('DOMContentLoaded', () => {
     authCodeInput.value = localStorage.getItem('authCode') || '';
     document.getElementById('expiryDate').value = localStorage.getItem('expiryDate') || '';
 
+    loadState(); 
+
     // Restore Live Refresh state
     isLiveRefreshActive = localStorage.getItem('liveRefreshActive') === 'true';
     if (isLiveRefreshActive) {
         liveRefreshBtn.textContent = 'Stop Refresh';
         worker.postMessage('start');
         startCalculateChangeTimer();
+        
+    // Add this after live refresh restoration
+    if (localStorage.getItem('calculateChangeTimerActive') === 'true') {
+        startCalculateChangeTimer();
+    }
 
         const savedChain = localStorage.getItem('rawOptionChain');
         if (savedChain) {
@@ -184,6 +191,7 @@ function calculateChange() {
     };
 
     initialValues = { ...deltas };
+    saveState();
     return changes;
 }
 
@@ -213,6 +221,8 @@ function stopCalculateChangeTimer() {
 
 function updateOptionChainData(optionChain, underlyingSpotPrice) {
     optionChainTableBody.innerHTML = '';
+    
+    loadState();
     
     totals = {
     CallVolume: 0, CallOI: 0, CallAskQty: 0, CallBidQty: 0, CallIV: 0, CallDelta: 0,
@@ -268,8 +278,9 @@ function updateOptionChainData(optionChain, underlyingSpotPrice) {
         optionChainTableBody.appendChild(row);
     });
 
-    if (!initialValues.CallVolume) {
+    if (!initialValues.CallVolume || underlyingSpotPrice !== initialValues.price) {
         initialValues = { ...totals, price: underlyingSpotPrice };
+        saveState();
     }
 
     deltas = {
@@ -379,18 +390,18 @@ function saveState() {
 function loadState() {
     const savedState = JSON.parse(localStorage.getItem('optionChainState')) || {};
 
-    if (savedState.calculateChangeTimerActive) {
-        localStorage.setItem('calculateChangeTimerActive', savedState.calculateChangeTimerActive);
-    }
-    if (savedState.calculateChangeLastRun) {
-        localStorage.setItem('calculateChangeLastRun', savedState.calculateChangeLastRun);
-    }
-
     totals = savedState.totals || { ...initialValues };
     initialValues = savedState.initialValues || { ...initialValues };
     deltas = savedState.deltas || { ...deltas };
     changes = savedState.changes || { ...changes };
 
+    if (savedState.calculateChangeTimerActive) {
+        localStorage.setItem('calculateChangeTimerActive', savedState.calculateChangeTimerActive);
+        startCalculateChangeTimer();
+    }
+    if (savedState.calculateChangeLastRun) {
+        localStorage.setItem('calculateChangeLastRun', savedState.calculateChangeLastRun);
+    }
     document.getElementById('expiryDate').value = savedState.expiryDate || '';
     calculateChangeTimerActive = savedState.calculateChangeTimerActive || false;
 }
