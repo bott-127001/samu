@@ -88,6 +88,11 @@ let totals = {
     PutVolume: 0, PutOI: 0, PutAskQty: 0, PutBidQty: 0, PutIV: 0, PutDelta: 0
 };
 
+let difference = {
+    CallVolume: 0, CallOI: 0, CallAskQty: 0, CallBidQty: 0, CallIV: 0, CallDelta: 0,
+    PutVolume: 0, PutOI: 0, PutAskQty: 0, PutBidQty: 0, PutIV: 0, PutDelta: 0 
+};
+
 getDataBtn.addEventListener('click', fetchData);
 liveRefreshBtn.addEventListener('click', toggleLiveRefresh);
 loginBtn.addEventListener('click', startAuthentication);
@@ -279,10 +284,24 @@ function updateOptionChainData(optionChain, underlyingSpotPrice) {
         optionChainTableBody.appendChild(row);
     });
 
-    if (!initialValues.CallVolume || underlyingSpotPrice !== initialValues.price) {
-        initialValues = { ...totals, price: underlyingSpotPrice };
+    if (!initialValues.CallVolume) {
+        initialValues = { ...totals};
         saveState();
     }
+    difference = {
+        CallVolume: totals.CallVolume - initialValues.CallVolume,
+        CallOI: totals.CallOI - initialValues.CallOI, 
+        CallAskQty: totals.CallAskQty - initialValues.CallAskQty,
+        CallBidQty: totals.CallBidQty - initialValues.CallBidQty,
+        CallIV: totals.CallIV - initialValues.CallIV,
+        CallDelta: totals.CallDelta - initialValues.CallDelta,
+        PutVolume: totals.PutVolume - initialValues.PutVolume,
+        PutOI: totals.PutOI - initialValues.PutOI,
+        PutAskQty: totals.PutAskQty - initialValues.PutAskQty,
+        PutBidQty: totals.PutBidQty - initialValues.PutBidQty,
+        PutIV: totals.PutIV - initialValues.PutIV,
+        PutDelta: totals.PutDelta - initialValues.PutDelta  
+    };
 
     deltas = {
         CallVolume: (totals.CallVolume - initialValues.CallVolume) / totals.CallVolume * 100,
@@ -325,25 +344,25 @@ function updateOptionChainData(optionChain, underlyingSpotPrice) {
 
     const diffRow = document.createElement('tr');
     diffRow.innerHTML = `
-        <td>${totals.CallVolume - initialValues.CallVolume}</td>
-        <td>${totals.CallOI - initialValues.CallOI}</td>
-        <td>${(totals.CallIV - initialValues.CallIV).toFixed(4)}</td>
-        <td>${(totals.CallDelta - initialValues.CallDelta).toFixed(4)}</td>
+        <td>${difference?.CallVolume ?? 0}</td>
+        <td>${difference?.CallOI ?? 0}</td>
+        <td>${(difference?.CallIV ?? 0).toFixed(4)}</td>
+        <td>${(difference?.CallDelta ?? 0).toFixed(4)}</td>
         <td></td>
-        <td>${totals.CallBidQty - initialValues.CallBidQty}</td>
-        <td></td>
-        <td></td>
-        <td>${totals.CallAskQty - initialValues.CallAskQty}</td>
-        <td></td>
-        <td>${totals.PutAskQty - initialValues.PutAskQty}</td>
+        <td>${difference?.CallBidQty ?? 0}</td>
         <td></td>
         <td></td>
-        <td>${totals.PutBidQty - initialValues.PutBidQty}</td>
+        <td>${difference?.CallAskQty ?? 0}</td>
         <td></td>
-        <td>${(totals.PutDelta - initialValues.PutDelta).toFixed(4)}</td>
-        <td>${(totals.PutIV - initialValues.PutIV).toFixed(4)}</td>
-        <td>${totals.PutOI - initialValues.PutOI}</td>
-        <td>${totals.PutVolume - initialValues.PutVolume}</td>
+        <td>${difference?.PutAskQty ?? 0}</td>
+        <td></td>
+        <td></td>
+        <td>${difference?.PutBidQty ?? 0}</td>
+        <td></td>
+        <td>${(difference?.PutDelta ?? 0).toFixed(4)}</td>
+        <td>${(difference?.PutIV ?? 0).toFixed(4)}</td>
+        <td>${difference?.PutOI ?? 0}</td>
+        <td>${difference?.PutVolume ?? 0}</td>
     `;
     optionChainTableBody.appendChild(diffRow);
 
@@ -380,6 +399,7 @@ function saveState() {
         initialValues,
         deltas,
         changes,
+        difference,
         expiryDate: document.getElementById('expiryDate').value,
         calculateChangeLastRun: localStorage.getItem('calculateChangeLastRun'),
         calculateChangeTimerActive: localStorage.getItem('calculateChangeTimerActive')
@@ -395,6 +415,7 @@ function loadState() {
     initialValues = savedState.initialValues || { ...initialValues };
     deltas = savedState.deltas || { ...deltas };
     changes = savedState.changes || { ...changes };
+    difference = savedState.difference || {...difference}
 
     if (savedState.calculateChangeTimerActive) {
         localStorage.setItem('calculateChangeTimerActive', savedState.calculateChangeTimerActive);
