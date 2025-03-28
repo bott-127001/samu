@@ -17,8 +17,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Restore input fields
     accessTokenInput.value = localStorage.getItem('accessToken') || '';
     authCodeInput.value = localStorage.getItem('authCode') || '';
-    document.getElementById('expiryDate').value = localStorage.getItem('expiryDate') || '';
-
     loadState(); 
 
     // Restore Live Refresh state
@@ -424,7 +422,7 @@ function loadState() {
     if (savedState.calculateChangeLastRun) {
         localStorage.setItem('calculateChangeLastRun', savedState.calculateChangeLastRun);
     }
-    document.getElementById('expiryDate').value = savedState.expiryDate || '';
+    document.getElementById('expiryDate').value = savedState.expiryDate;
     calculateChangeTimerActive = savedState.calculateChangeTimerActive || false;
 }
 
