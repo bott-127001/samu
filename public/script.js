@@ -91,6 +91,10 @@ let difference = {
     PutVolume: 0, PutOI: 0, PutAskQty: 0, PutBidQty: 0, PutIV: 0, PutDelta: 0 
 };
 
+let deltaReferenceValues = {
+    CallVolume: 0, CallOI: 0, PutVolume: 0, PutOI: 0, CallDelta: 0, PutDelta: 0, CallIV: 0, PutIV: 0, timestamp: 0
+};
+
 getDataBtn.addEventListener('click', fetchData);
 liveRefreshBtn.addEventListener('click', toggleLiveRefresh);
 loginBtn.addEventListener('click', startAuthentication);
@@ -178,23 +182,33 @@ function resetInitialValues() {
 }
 
 function calculateChange() {
-    if (!initialValues.CallVolume) {
-        initialValues = { ...deltas };
+    // First run initialization
+    if (deltaReferenceValues.timestamp === 0) {
+        deltaReferenceValues = {
+            ...deltas,
+            timestamp: Date.now()
+        };
         return changes;
     }
+    // Calculate time difference
+    const timeDiff = Date.now() - deltaReferenceValues.timestamp;
 
-    changes = {
-        CallVolume: deltas.CallVolume - initialValues.CallVolume,
-        CallOI: deltas.CallOI - initialValues.CallOI,
-        PutVolume: deltas.PutVolume - initialValues.PutVolume,
-        PutOI: deltas.PutOI - initialValues.PutOI,
-        CallDelta: deltas.CallDelta - initialValues.CallDelta,
-        PutDelta: deltas.PutDelta - initialValues.PutDelta,
-        CallIV: deltas.CallIV - initialValues.CallIV,
-        PutIV: deltas.PutIV - initialValues.PutIV
-    };
+        changes = {
+            CallVolume: deltas.CallVolume - deltaReferenceValues.CallVolume,
+            CallOI: deltas.CallOI - deltaReferenceValues.CallOI,
+            PutVolume: deltas.PutVolume - deltaReferenceValues.PutVolume,
+            PutOI: deltas.PutOI - deltaReferenceValues.PutOI,
+            CallDelta: deltas.CallDelta - deltaReferenceValues.CallDelta,
+            PutDelta: deltas.PutDelta - deltaReferenceValues.PutDelta,
+            CallIV: deltas.CallIV - deltaReferenceValues.CallIV,
+            PutIV: deltas.PutIV - deltaReferenceValues.PutIV
+        };
 
-    initialValues = { ...deltas };
+        // Update reference values and timestamp
+        deltaReferenceValues = {
+            ...deltas,
+            timestamp: Date.now()
+        };
     saveState();
     return changes;
 }
@@ -203,6 +217,8 @@ let calculateChangeTimer;
 
 function startCalculateChangeTimer() {
     if (calculateChangeTimer) clearTimeout(calculateChangeTimer);
+
+    calculateChange();
 
     const lastExecution = parseInt(localStorage.getItem('calculateChangeLastRun')) || Date.now();
     const nextExecution = lastExecution + 900000;
@@ -400,6 +416,7 @@ function saveState() {
         deltas,
         changes,
         difference,
+        deltaReferenceValues,
         expiryDate: document.getElementById('expiryDate').value,
         calculateChangeLastRun: localStorage.getItem('calculateChangeLastRun'),
         calculateChangeTimerActive: localStorage.getItem('calculateChangeTimerActive')
@@ -415,7 +432,9 @@ function loadState() {
     initialValues = savedState.initialValues || { ...initialValues };
     deltas = savedState.deltas || { ...deltas };
     changes = savedState.changes || { ...changes };
-    difference = savedState.difference || {...difference}
+    difference = savedState.difference || {...difference};
+    deltaReferenceValues = savedState.deltaReferenceValues || {...deltaReferenceValues};
+
 
     if (savedState.calculateChangeTimerActive) {
         localStorage.setItem('calculateChangeTimerActive', savedState.calculateChangeTimerActive);
