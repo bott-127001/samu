@@ -228,6 +228,7 @@ function updateOptionChainData(optionChain, underlyingSpotPrice) {
     optionChainTableBody.innerHTML = '';
     
     loadState();
+    document.getElementById('expiryDate').value = currentExpiryDate;
     
     totals = {
     CallVolume: 0, CallOI: 0, CallAskQty: 0, CallBidQty: 0, CallIV: 0, CallDelta: 0,
