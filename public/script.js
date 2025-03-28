@@ -126,7 +126,6 @@ function submitAuthCode() {
 async function fetchData() {
     const accessToken = localStorage.getItem('accessToken') || accessTokenInput.value;
     const inputDate = document.getElementById('expiryDate').value;
-    localStorage.setItem('expiryDate', inputDate);
 
     if (!inputDate) {
         alert('Please enter a valid expiry date.');
@@ -163,17 +162,11 @@ function toggleLiveRefresh() {
         optionChainTableBody.innerHTML = '';
         stopCalculateChangeTimer();
     } else {
-        // Preserve expiry date before starting refresh
-        const currentExpiry = expiryDateInput.value;
         worker.postMessage('start');
         liveRefreshBtn.textContent = 'Stop Refresh';
         startCalculateChangeTimer();
-        // Restore expiry date if it exists
-        if (currentExpiry) {
-            localStorage.setItem('expiryDate', currentExpiry);
-            expiryDateInput.value = currentExpiry;
-        }
     }
+
     isLiveRefreshActive = !isLiveRefreshActive;
     localStorage.setItem('liveRefreshActive', isLiveRefreshActive);
 }
@@ -184,10 +177,6 @@ function resetInitialValues() {
         PutVolume: 0, PutOI: 0, PutAskQty: 0, PutBidQty: 0, PutIV: 0, PutDelta: 0,
         price: 0
     };
-    if (currentExpiry) {
-        expiryDateInput.value = currentExpiry;
-        localStorage.setItem('expiryDate', currentExpiry);
-    }
 }
 
 function calculateChange() {
@@ -442,4 +431,4 @@ function loadState() {
 window.addEventListener('beforeunload', () => {
     if (worker) worker.postMessage('stop');
     saveState();
-});
+}); 
