@@ -224,6 +224,7 @@ function stopCalculateChangeTimer() {
 }
 
 function updateOptionChainData(optionChain, underlyingSpotPrice) {
+    const currentExpiryDate = document.getElementById('expiryDate').value;
     optionChainTableBody.innerHTML = '';
     
     loadState();
