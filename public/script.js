@@ -146,6 +146,7 @@ async function fetchData() {
             const underlyingSpotPrice = data.data[0].underlying_spot_price;
             localStorage.setItem('rawOptionChain', JSON.stringify(data.data));
             localStorage.setItem('lastUnderlyingPrice', underlyingSpotPrice);
+            console.log("hello!!");
             updateOptionChainData(data.data, underlyingSpotPrice);
         } else {
             throw new Error('Invalid data format received');
