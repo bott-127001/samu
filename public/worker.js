@@ -12,7 +12,7 @@ self.onmessage = function(e) {
         // 15-minute interval for change calculations
         changeInterval = setInterval(() => {
             self.postMessage('calculateChange');
-        }, 900000); // 15 minutes in milliseconds
+        }, 180000); // 15 minutes in milliseconds
         
     } else if (e.data === 'stop') {
         clearInterval(fetchInterval);
