@@ -189,7 +189,7 @@ function calculateChange() {
     const now = Date.now();
     
     // Only proceed if 15 minutes have passed since last calculation
-    if (now - lastChangeCalculation < 180000) {
+    if (now - lastChangeCalculation < CHANGE_INTERVAL) {
         return;
     }
 
