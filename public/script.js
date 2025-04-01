@@ -24,7 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isLiveRefreshActive) {
         liveRefreshBtn.textContent = 'Stop Refresh';
         worker.postMessage('start');
-        startCalculateChangeTimer();
         
         const savedChain = localStorage.getItem('rawOptionChain');
         if (savedChain) {
@@ -417,15 +416,11 @@ function loadState() {
     difference = savedState.difference || {...difference};
     deltaReferenceValues = savedState.deltaReferenceValues || {...deltaReferenceValues};
 
-
     if (localStorage.getItem('changeTimerActive') === 'true') {
         startChangeTimer();
     }
-    if (savedState.calculateChangeLastRun) {
-        localStorage.setItem('calculateChangeLastRun', savedState.calculateChangeLastRun);
-    }
     document.getElementById('expiryDate').value = savedState.expiryDate;
-    calculateChangeTimerActive = savedState.calculateChangeTimerActive || false;
+
 }
 
 window.addEventListener('beforeunload', () => {
