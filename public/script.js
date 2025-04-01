@@ -51,6 +51,8 @@ const expiryDateInput = document.getElementById('expiryDate');
 let worker;
 let calculateChangeInterval;
 let isLiveRefreshActive = localStorage.getItem('liveRefreshActive') === 'true';
+const CHANGE_INTERVAL = 900000; // 15 minutes in milliseconds
+let lastChangeCalculation = localStorage.getItem('lastChangeCalculation') || 0;
 
 if (window.Worker) {
     worker = new Worker('worker.js');
@@ -143,6 +145,7 @@ async function fetchData() {
             localStorage.setItem('rawOptionChain', JSON.stringify(data.data));
             localStorage.setItem('lastUnderlyingPrice', underlyingSpotPrice);
             updateOptionChainData(data.data, underlyingSpotPrice);
+            console.log("5 sec fetch");
         } else {
             throw new Error('Invalid data format received');
         }
@@ -160,6 +163,7 @@ function toggleLiveRefresh() {
         localStorage.removeItem('lastUnderlyingPrice');
         localStorage.removeItem('optionChainState');
         localStorage.removeItem('calculateChangeLastRun');
+        localStorage.removeItem(''lastChangeCalculation);
         resetInitialValues();
         optionChainTableBody.innerHTML = '';
         stopCalculateChangeTimer();
@@ -182,17 +186,21 @@ function resetInitialValues() {
 }
 
 function calculateChange() {
-    // First run initialization
+    const now = Date.now();
+    
+    // Only proceed if 15 minutes have passed since last calculation
+    if (now - lastChangeCalculation < CHANGE_INTERVAL) {
+        return;
+    }
+
+    // For first run or after reset
     if (deltaReferenceValues.timestamp === 0) {
         deltaReferenceValues = {
             ...deltas,
-            timestamp: Date.now()
+            timestamp: now
         };
-        return changes;
-    }
-    // Calculate time difference
-    const timeDiff = Date.now() - deltaReferenceValues.timestamp;
-
+    } else {
+        // Calculate changes since last reference point
         changes = {
             CallVolume: deltas.CallVolume - deltaReferenceValues.CallVolume,
             CallOI: deltas.CallOI - deltaReferenceValues.CallOI,
@@ -203,40 +211,40 @@ function calculateChange() {
             CallIV: deltas.CallIV - deltaReferenceValues.CallIV,
             PutIV: deltas.PutIV - deltaReferenceValues.PutIV
         };
+    }
 
-        // Update reference values and timestamp
-        deltaReferenceValues = {
-            ...deltas,
-            timestamp: Date.now()
-        };
+    // Update reference values
+    deltaReferenceValues = {
+        ...deltas,
+        timestamp: now
+    };
+    
+    // Update last calculation time
+    lastChangeCalculation = now;
+    localStorage.setItem('lastChangeCalculation', lastChangeCalculation);
+    console.log("zhala be!!");
     saveState();
-    return changes;
 }
 
 let calculateChangeTimer;
 
 function startCalculateChangeTimer() {
-    if (calculateChangeTimer) clearTimeout(calculateChangeTimer);
-
-    calculateChange();
-
-    const lastExecution = parseInt(localStorage.getItem('calculateChangeLastRun')) || Date.now();
-    const nextExecution = lastExecution + 900000;
-    const remainingTime = nextExecution - Date.now();
-
-    calculateChangeTimer = setTimeout(() => {
+    // Clear any existing interval
+    stopCalculateChangeTimer();
+    
+    // Check every minute if 15 minutes have passed
+    calculateChangeInterval = setInterval(() => {
         calculateChange();
-        localStorage.setItem('calculateChangeLastRun', Date.now());
-        startCalculateChangeTimer();
-    }, Math.max(remainingTime, 0));
-
-    localStorage.setItem('calculateChangeTimerActive', 'true');
+    }, 60000); // Check every minute
+    
+    // Calculate immediately if it's time
+    const now = Date.now();
+    if (now - lastChangeCalculation >= CHANGE_INTERVAL) {
+        calculateChange();
+    }
 }
-
 function stopCalculateChangeTimer() {
-    clearTimeout(calculateChangeTimer);
-    localStorage.removeItem('calculateChangeLastRun');
-    localStorage.removeItem('calculateChangeTimerActive');
+    clearInterval(calculateChangeInterval);
 }
 
 function updateOptionChainData(optionChain, underlyingSpotPrice) {
@@ -330,9 +338,7 @@ function updateOptionChainData(optionChain, underlyingSpotPrice) {
         PutIV: (totals.PutIV - initialValues.PutIV) / totals.PutIV * 100
     };
 
-    if (localStorage.getItem('calculateChangeTimerActive') === 'true') {
-        startCalculateChangeTimer();
-    }
+    calculateChange();
 
     const totalRow = document.createElement('tr');
     totalRow.innerHTML = `
@@ -419,7 +425,8 @@ function saveState() {
         deltaReferenceValues,
         expiryDate: document.getElementById('expiryDate').value,
         calculateChangeLastRun: localStorage.getItem('calculateChangeLastRun'),
-        calculateChangeTimerActive: localStorage.getItem('calculateChangeTimerActive')
+        calculateChangeTimerActive: localStorage.getItem('calculateChangeTimerActive'),
+        lastChangeCalculation: lastChangeCalculation
     };
 
     localStorage.setItem('optionChainState', JSON.stringify(state));
@@ -435,14 +442,16 @@ function loadState() {
     difference = savedState.difference || {...difference};
     deltaReferenceValues = savedState.deltaReferenceValues || {...deltaReferenceValues};
 
-
-    if (savedState.calculateChangeTimerActive) {
-        localStorage.setItem('calculateChangeTimerActive', savedState.calculateChangeTimerActive);
+    lastChangeCalculation = savedState.lastChangeCalculation || 0;
+    
+    if (isLiveRefreshActive) {
         startCalculateChangeTimer();
     }
-    if (savedState.calculateChangeLastRun) {
-        localStorage.setItem('calculateChangeLastRun', savedState.calculateChangeLastRun);
+    
+    if (savedState.lastChangeCalculation) {
+        lastChangeCalculation = savedState.lastChangeCalculation;
     }
+
     document.getElementById('expiryDate').value = savedState.expiryDate;
     calculateChangeTimerActive = savedState.calculateChangeTimerActive || false;
 }
