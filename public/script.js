@@ -168,6 +168,16 @@ function toggleLiveRefresh() {
         optionChainTableBody.innerHTML = '';
         stopCalculateChangeTimer();
     } else {
+         if (document.hidden) {
+            // If tab is hidden when starting, wait for visibility
+            const resumeHandler = () => {
+                worker.postMessage('start');
+                document.removeEventListener('visibilitychange', resumeHandler);
+            };
+            document.addEventListener('visibilitychange', resumeHandler);
+        } else {
+            worker.postMessage('start');
+        }
         worker.postMessage('start');
         liveRefreshBtn.textContent = 'Stop Refresh';
         startCalculateChangeTimer();
