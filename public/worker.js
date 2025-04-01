@@ -1,21 +1,39 @@
 // worker.js
 let fetchInterval;
 let changeInterval;
+let isPaused = false;
 
 self.onmessage = function(e) {
     if (e.data === 'start') {
-        // 5-second interval for data fetching
-        fetchInterval = setInterval(() => {
-            self.postMessage('fetch');
-        }, 5000);
-        
-        // 15-minute interval for change calculations
-        changeInterval = setInterval(() => {
-            self.postMessage('calculateChange');
-        }, 180000); // 15 minutes in milliseconds
-        
+        startIntervals();
     } else if (e.data === 'stop') {
-        clearInterval(fetchInterval);
-        clearInterval(changeInterval);
+        clearIntervals();
+    } else if (e.data === 'pause') {
+        isPaused = true;
+        clearIntervals();
+    } else if (e.data === 'resume') {
+        if (isPaused) {
+            isPaused = false;
+            startIntervals();
+        }
     }
 };
+
+function startIntervals() {
+    // Clear any existing intervals
+    clearIntervals();
+    
+    // Start new intervals
+    fetchInterval = setInterval(() => {
+        self.postMessage('fetch');
+    }, 5000);
+    
+    changeInterval = setInterval(() => {
+        self.postMessage('calculateChange');
+    }, 900000);
+}
+
+function clearIntervals() {
+    clearInterval(fetchInterval);
+    clearInterval(changeInterval);
+}
