@@ -163,7 +163,7 @@ function toggleLiveRefresh() {
         localStorage.removeItem('lastUnderlyingPrice');
         localStorage.removeItem('optionChainState');
         localStorage.removeItem('calculateChangeLastRun');
-        localStorage.removeItem(''lastChangeCalculation);
+        localStorage.removeItem('lastChangeCalculation');
         resetInitialValues();
         optionChainTableBody.innerHTML = '';
         stopCalculateChangeTimer();
