@@ -442,3 +442,12 @@ window.addEventListener('beforeunload', () => {
     if (worker) worker.postMessage('stop');
     saveState();
 }); 
+
+// Add this at the bottom of your main script
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        worker.postMessage('pause');
+    } else {
+        worker.postMessage('resume');
+    }
+});
