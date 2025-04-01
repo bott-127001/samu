@@ -1,39 +1,39 @@
 // worker.js
 let fetchInterval;
 let changeInterval;
-let isPaused = false;
+let isVisible = true;
 
-self.onmessage = function(e) {
-    if (e.data === 'start') {
-        startIntervals();
-    } else if (e.data === 'stop') {
-        clearIntervals();
-    } else if (e.data === 'pause') {
-        isPaused = true;
-        clearIntervals();
-    } else if (e.data === 'resume') {
-        if (isPaused) {
-            isPaused = false;
-            startIntervals();
-        }
-    }
-};
+// More frequent checks when visible
+const ACTIVE_INTERVAL = 5000; 
+// Slower but keeps alive when hidden
+const BACKGROUND_INTERVAL = 30000; 
 
-function startIntervals() {
-    // Clear any existing intervals
-    clearIntervals();
+function startPolling() {
+    clearInterval(fetchInterval);
+    clearInterval(changeInterval);
     
-    // Start new intervals
+    const interval = isVisible ? ACTIVE_INTERVAL : BACKGROUND_INTERVAL;
+    
     fetchInterval = setInterval(() => {
         self.postMessage('fetch');
-    }, 5000);
+    }, interval);
     
+    // Keep 15-min change calc as-is
     changeInterval = setInterval(() => {
-        self.postMessage('calculateChange');
+        self.postMessage('calculateChange'); 
     }, 900000);
 }
 
-function clearIntervals() {
-    clearInterval(fetchInterval);
-    clearInterval(changeInterval);
-}
+self.onmessage = function(e) {
+    if (e.data === 'visibilityChange') {
+        isVisible = e.data.visible;
+        startPolling();
+    }
+    else if (e.data === 'start') {
+        startPolling();
+    }
+    else if (e.data === 'stop') {
+        clearInterval(fetchInterval);
+        clearInterval(changeInterval);
+    }
+};
