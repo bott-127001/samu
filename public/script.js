@@ -60,6 +60,7 @@ if (window.Worker) {
             fetchData();
         }
         if (e.data === 'calculateChange') {
+            console.log("15-minute change calculation triggered");
             calculateChange();
         }
     };
@@ -217,29 +218,18 @@ function calculateChange() {
 let calculateChangeTimer;
 
 function startCalculateChangeTimer() {
-    if (calculateChangeTimer) clearTimeout(calculateChangeTimer);
-
-    calculateChange();
-
-    const lastExecution = parseInt(localStorage.getItem('calculateChangeLastRun')) || Date.now();
-    const nextExecution = lastExecution + 900000;
-    const remainingTime = nextExecution - Date.now();
-
-    calculateChangeTimer = setTimeout(() => {
-        calculateChange();
-        localStorage.setItem('calculateChangeLastRun', Date.now());
-        startCalculateChangeTimer();
-    }, Math.max(remainingTime, 0));
-
+    // Just ensure the worker is started
+    // The worker will now handle both intervals
+    if (isLiveRefreshActive) {
+        worker.postMessage('start');
+    }
     localStorage.setItem('calculateChangeTimerActive', 'true');
 }
 
 function stopCalculateChangeTimer() {
-    clearTimeout(calculateChangeTimer);
-    localStorage.removeItem('calculateChangeLastRun');
+    // No need to clear timers here - worker handles it
     localStorage.removeItem('calculateChangeTimerActive');
 }
-
 function updateOptionChainData(optionChain, underlyingSpotPrice) {
     const currentExpiryDate = document.getElementById('expiryDate').value;
     optionChainTableBody.innerHTML = '';
