@@ -190,7 +190,6 @@ function calculateChange() {
         deltaReferenceValues = {
             ...deltas,
             timestamp: Date.now()
-            console.log("bacche done!!");
         };
         return changes;
     }
