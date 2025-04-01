@@ -26,11 +26,6 @@ document.addEventListener('DOMContentLoaded', () => {
         worker.postMessage('start');
         startCalculateChangeTimer();
         
-    // Add this after live refresh restoration
-    if (localStorage.getItem('calculateChangeTimerActive') === 'true') {
-        startCalculateChangeTimer();
-    }
-
         const savedChain = localStorage.getItem('rawOptionChain');
         if (savedChain) {
             const underlyingPrice = localStorage.getItem('lastUnderlyingPrice');
@@ -51,6 +46,8 @@ const expiryDateInput = document.getElementById('expiryDate');
 let worker;
 let calculateChangeInterval;
 let isLiveRefreshActive = localStorage.getItem('liveRefreshActive') === 'true';
+const CHANGE_INTERVAL = 900000; // 15 minutes in ms
+let changeTimer;
 
 if (window.Worker) {
     worker = new Worker('worker.js');
@@ -58,10 +55,6 @@ if (window.Worker) {
     worker.onmessage = function(e) {
         if (e.data === 'fetch') {
             fetchData();
-        }
-        if (e.data === 'calculateChange') {
-            console.log("15-minute change calculation triggered");
-            calculateChange();
         }
     };
 
@@ -167,26 +160,17 @@ function toggleLiveRefresh() {
         localStorage.removeItem('calculateChangeLastRun');
         resetInitialValues();
         optionChainTableBody.innerHTML = '';
-        stopCalculateChangeTimer();
+        stopChangeTimer();
     } else {
-         if (document.hidden) {
-            // If tab is hidden when starting, wait for visibility
-            const resumeHandler = () => {
-                worker.postMessage('start');
-                document.removeEventListener('visibilitychange', resumeHandler);
-            };
-            document.addEventListener('visibilitychange', resumeHandler);
-        } else {
-            worker.postMessage('start');
-        }
         worker.postMessage('start');
         liveRefreshBtn.textContent = 'Stop Refresh';
-        startCalculateChangeTimer();
+        startChangeTimer();
     }
 
     isLiveRefreshActive = !isLiveRefreshActive;
     localStorage.setItem('liveRefreshActive', isLiveRefreshActive);
 }
+
 
 function resetInitialValues() {
     initialValues = {
@@ -198,7 +182,7 @@ function resetInitialValues() {
 
 function calculateChange() {
     // First run initialization
-    if (deltaReferenceValues.timestamp === 0) {
+    if (!deltaReferenceValues.timestamp) {
         deltaReferenceValues = {
             ...deltas,
             timestamp: Date.now()
@@ -226,21 +210,23 @@ function calculateChange() {
     return changes;
 }
 
-let calculateChangeTimer;
-
-function startCalculateChangeTimer() {
-    // Just ensure the worker is started
-    // The worker will now handle both intervals
-    if (isLiveRefreshActive) {
-        worker.postMessage('start');
-    }
-    localStorage.setItem('calculateChangeTimerActive', 'true');
+function startChangeTimer() {
+    // Clear existing timer
+    stopChangeTimer();
+    
+    // Run immediately
+    calculateChange();
+    
+    // Set interval for 15 minutes
+    changeTimer = setInterval(calculateChange, CHANGE_INTERVAL);
+    localStorage.setItem('changeTimerActive', 'true');
 }
 
-function stopCalculateChangeTimer() {
-    // No need to clear timers here - worker handles it
-    localStorage.removeItem('calculateChangeTimerActive');
+function stopChangeTimer() {
+    clearInterval(changeTimer);
+    localStorage.removeItem('changeTimerActive');
 }
+
 function updateOptionChainData(optionChain, underlyingSpotPrice) {
     const currentExpiryDate = document.getElementById('expiryDate').value;
     optionChainTableBody.innerHTML = '';
@@ -331,11 +317,7 @@ function updateOptionChainData(optionChain, underlyingSpotPrice) {
         PutDelta: (totals.PutDelta - initialValues.PutDelta) / totals.PutDelta * 100,
         PutIV: (totals.PutIV - initialValues.PutIV) / totals.PutIV * 100
     };
-
-    if (localStorage.getItem('calculateChangeTimerActive') === 'true') {
-        startCalculateChangeTimer();
-    }
-
+    
     const totalRow = document.createElement('tr');
     totalRow.innerHTML = `
         <td>${totals.CallVolume}</td>
@@ -420,8 +402,6 @@ function saveState() {
         difference,
         deltaReferenceValues,
         expiryDate: document.getElementById('expiryDate').value,
-        calculateChangeLastRun: localStorage.getItem('calculateChangeLastRun'),
-        calculateChangeTimerActive: localStorage.getItem('calculateChangeTimerActive')
     };
 
     localStorage.setItem('optionChainState', JSON.stringify(state));
@@ -438,9 +418,8 @@ function loadState() {
     deltaReferenceValues = savedState.deltaReferenceValues || {...deltaReferenceValues};
 
 
-    if (savedState.calculateChangeTimerActive) {
-        localStorage.setItem('calculateChangeTimerActive', savedState.calculateChangeTimerActive);
-        startCalculateChangeTimer();
+    if (localStorage.getItem('changeTimerActive') === 'true') {
+        startChangeTimer();
     }
     if (savedState.calculateChangeLastRun) {
         localStorage.setItem('calculateChangeLastRun', savedState.calculateChangeLastRun);
