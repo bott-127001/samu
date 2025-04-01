@@ -59,6 +59,9 @@ if (window.Worker) {
         if (e.data === 'fetch') {
             fetchData();
         }
+        if (e.data === 'calculateChange') {
+            calculateChange();
+        }
     };
 
     if (isLiveRefreshActive) {
@@ -190,19 +193,16 @@ function calculateChange() {
         };
         return changes;
     }
-    // Calculate time difference
-    const timeDiff = Date.now() - deltaReferenceValues.timestamp;
-
-        changes = {
-            CallVolume: deltas.CallVolume - deltaReferenceValues.CallVolume,
-            CallOI: deltas.CallOI - deltaReferenceValues.CallOI,
-            PutVolume: deltas.PutVolume - deltaReferenceValues.PutVolume,
-            PutOI: deltas.PutOI - deltaReferenceValues.PutOI,
-            CallDelta: deltas.CallDelta - deltaReferenceValues.CallDelta,
-            PutDelta: deltas.PutDelta - deltaReferenceValues.PutDelta,
-            CallIV: deltas.CallIV - deltaReferenceValues.CallIV,
-            PutIV: deltas.PutIV - deltaReferenceValues.PutIV
-        };
+    changes = {
+        CallVolume: deltas.CallVolume - deltaReferenceValues.CallVolume,
+        CallOI: deltas.CallOI - deltaReferenceValues.CallOI,
+        PutVolume: deltas.PutVolume - deltaReferenceValues.PutVolume,
+        PutOI: deltas.PutOI - deltaReferenceValues.PutOI,
+        CallDelta: deltas.CallDelta - deltaReferenceValues.CallDelta,
+        PutDelta: deltas.PutDelta - deltaReferenceValues.PutDelta,
+        CallIV: deltas.CallIV - deltaReferenceValues.CallIV,
+        PutIV: deltas.PutIV - deltaReferenceValues.PutIV
+    };
 
         // Update reference values and timestamp
         deltaReferenceValues = {
