@@ -328,14 +328,14 @@ function updateOptionChainData(optionChain, underlyingSpotPrice) {
     };
 
     deltas = {
-        CallVolume: (totals.CallVolume - initialValues.CallVolume) / totals.CallVolume * 100,
-        CallOI: (totals.CallOI - initialValues.CallOI) / totals.CallOI * 100,
-        CallDelta: (totals.CallDelta - initialValues.CallDelta) / totals.CallDelta * 100,
-        CallIV: (totals.CallIV - initialValues.CallIV) / totals.CallIV * 100,
-        PutVolume: (totals.PutVolume - initialValues.PutVolume) / totals.PutVolume * 100,
-        PutOI: (totals.PutOI - initialValues.PutOI) / totals.PutOI * 100,
-        PutDelta: (totals.PutDelta - initialValues.PutDelta) / totals.PutDelta * 100,
-        PutIV: (totals.PutIV - initialValues.PutIV) / totals.PutIV * 100
+        CallVolume: (difference.CallVolume) / totals.CallVolume * 100,
+        CallOI: (difference.CallOI) / totals.CallOI * 100,
+        CallDelta: (difference.CallDelta) / totals.CallDelta * 100,
+        CallIV: (difference.CallIV) / totals.CallIV * 100,
+        PutVolume: (difference.PutVolume) / totals.PutVolume * 100,
+        PutOI: (difference.PutOI) / totals.PutOI * 100,
+        PutDelta: (difference.PutDelta) / totals.PutDelta * 100,
+        PutIV: (difference.PutIV) / totals.PutIV * 100
     };
 
     calculateChange();
