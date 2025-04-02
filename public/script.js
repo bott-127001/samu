@@ -160,11 +160,9 @@ function toggleLiveRefresh() {
         localStorage.removeItem('lastChangeCalculation');
         resetInitialValues();
         optionChainTableBody.innerHTML = '';
-        stopCalculateChangeTimer();
     } else {
         worker.postMessage('start');
         liveRefreshBtn.textContent = 'Stop Refresh';
-        startCalculateChangeTimer();
     }
 
     isLiveRefreshActive = !isLiveRefreshActive;
