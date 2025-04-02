@@ -226,27 +226,6 @@ function calculateChange() {
     saveState();
 }
 
-let calculateChangeTimer;
-
-function startCalculateChangeTimer() {
-    // Clear any existing interval
-    stopCalculateChangeTimer();
-    
-    // Check every minute if 15 minutes have passed
-    calculateChangeInterval = setInterval(() => {
-        calculateChange();
-    }, 60000); // Check every minute
-    
-    // Calculate immediately if it's time
-    const now = Date.now();
-    if (now - lastChangeCalculation >= CHANGE_INTERVAL) {
-        calculateChange();
-    }
-}
-function stopCalculateChangeTimer() {
-    clearInterval(calculateChangeInterval);
-}
-
 function updateOptionChainData(optionChain, underlyingSpotPrice) {
     const currentExpiryDate = document.getElementById('expiryDate').value;
     optionChainTableBody.innerHTML = '';
