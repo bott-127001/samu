@@ -415,10 +415,6 @@ function loadState() {
 
     lastChangeCalculation = savedState.lastChangeCalculation || 0;
     
-    if (isLiveRefreshActive) {
-        startCalculateChangeTimer();
-    }
-    
     if (savedState.lastChangeCalculation) {
         lastChangeCalculation = savedState.lastChangeCalculation;
     }
