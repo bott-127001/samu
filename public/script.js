@@ -41,6 +41,7 @@ const authCodeInput = document.getElementById('authCode');
 const sendAuthCodeBtn = document.getElementById('sendAuthCodeBtn');
 const optionChainTableBody = document.getElementById('optionChainTableBody');
 const expiryDateInput = document.getElementById('expiryDate');
+const resetBtn = document.getElementById('resetBtn');
 
 let worker;
 let calculateChangeInterval;
@@ -95,6 +96,30 @@ getDataBtn.addEventListener('click', fetchData);
 liveRefreshBtn.addEventListener('click', toggleLiveRefresh);
 loginBtn.addEventListener('click', startAuthentication);
 sendAuthCodeBtn.addEventListener('click', submitAuthCode);
+resetBtn.addEventListener('click', () => {
+    if (confirm('This will reset ALL calculations and data. Proceed?')) {
+        clearDashboard();
+        // Optional: Show visual feedback
+        showToast('Dashboard has been reset to initial state');
+    }
+    });
+
+function showToast(message) {
+    // Simple toast implementation
+    const toast = document.createElement('div');
+    toast.textContent = message;
+    toast.style.position = 'fixed';
+    toast.style.bottom = '20px';
+    toast.style.right = '20px';
+    toast.style.padding = '10px 20px';
+    toast.style.background = '#4CAF50';
+    toast.style.color = 'white';
+    toast.style.borderRadius = '4px';
+    document.body.appendChild(toast);
+    
+    setTimeout(() => toast.remove(), 3000);
+}
+
 
 function startAuthentication() {
     const authUrl = '/login';
@@ -152,13 +177,6 @@ async function fetchData() {
 function toggleLiveRefresh() {
     if (isLiveRefreshActive) {
         worker.postMessage('stop');
-        liveRefreshBtn.textContent = 'Live Refresh';
-        localStorage.removeItem('rawOptionChain');
-        localStorage.removeItem('lastUnderlyingPrice');
-        localStorage.removeItem('optionChainState');
-        localStorage.removeItem('calculateChangeLastRun');
-        localStorage.removeItem('lastChangeCalculation');
-        resetInitialValues();
         optionChainTableBody.innerHTML = '';
     } else {
         worker.postMessage('start');
